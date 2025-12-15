@@ -1,0 +1,5 @@
+{
+  "name": "GoldenDex",
+  "description": "A professional-grade mobile trading application for XAU/USDC perpetual contracts, featuring real-time K-line charts, order management, and AI-powered market analysis.",
+  "requestFramePermissions": []
+}
