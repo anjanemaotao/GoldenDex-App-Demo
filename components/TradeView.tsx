@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, Settings2, Info, X, BarChart2, TrendingUp, Layers } from 'lucide-react';
+import { Settings2, Info, X, BarChart2, TrendingUp, Layers } from 'lucide-react';
 import { CandleChart } from './CandleChart';
 import { OrderBook } from './OrderBook';
 import { DepthChart } from './DepthChart';
 import { Candle, Side, MarginMode, Language, ChartType, MarketTrade } from '../types';
-import { analyzeMarket } from '../services/geminiService';
 import { TRANSLATIONS } from '../constants';
 
 interface TradeViewProps {
@@ -24,8 +23,6 @@ export const TradeView: React.FC<TradeViewProps> = ({ candles, currentPrice, bal
   const [amount, setAmount] = useState<string>('1.00');
   const [limitPrice, setLimitPrice] = useState<string>(currentPrice.toFixed(2));
   const [leverage, setLeverage] = useState<number>(20);
-  const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [showFundingModal, setShowFundingModal] = useState(false);
   const [activeBookTab, setActiveBookTab] = useState<'book' | 'trades'>('book');
   
@@ -80,19 +77,6 @@ export const TradeView: React.FC<TradeViewProps> = ({ candles, currentPrice, bal
     onPlaceOrder(side, size, price, orderType, marginMode);
   };
 
-  const runAnalysis = async () => {
-    setIsAnalyzing(true);
-    setAiAnalysis("Analyzing market structure...");
-    try {
-      const result = await analyzeMarket(candles, currentPrice);
-      setAiAnalysis(result);
-    } catch (e) {
-      setAiAnalysis("Analysis failed.");
-    } finally {
-      setIsAnalyzing(false);
-    }
-  };
-
   const executionPrice = orderType === 'LIMIT' ? parseFloat(limitPrice) || currentPrice : currentPrice;
   const maxBuy = (balance * leverage) / executionPrice;
 
@@ -103,7 +87,7 @@ export const TradeView: React.FC<TradeViewProps> = ({ candles, currentPrice, bal
   return (
     <div className="flex flex-col h-full pb-20 overflow-y-auto no-scrollbar dark:bg-slate-900 bg-slate-50 relative">
       {/* Header */}
-      <div className="dark:bg-slate-900 bg-white border-b dark:border-slate-800 border-slate-200 sticky top-0 z-10 shadow-sm">
+      <div className="dark:bg-slate-900 bg-white border-b dark:border-slate-800 border-slate-200 sticky top-0 z-30 shadow-sm">
           <div className="px-4 py-3 flex justify-between items-center">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 flex items-center justify-center">
@@ -176,18 +160,6 @@ export const TradeView: React.FC<TradeViewProps> = ({ candles, currentPrice, bal
         ) : (
            <CandleChart data={candles} type={chartType} />
         )}
-        
-        {/* Controls Overlay */}
-        <div className="absolute top-2 left-2 flex gap-2">
-            <button 
-                onClick={runAnalysis}
-                disabled={isAnalyzing}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600/90 hover:bg-indigo-500 text-white text-[10px] font-bold uppercase tracking-wider rounded-full shadow-lg backdrop-blur transition-all border border-indigo-500/50"
-            >
-                <Sparkles size={10} className={isAnalyzing ? "animate-pulse" : ""} />
-                {isAnalyzing ? "AI..." : "AI"}
-            </button>
-        </div>
 
         <div className="absolute top-2 right-2 bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5 flex border dark:border-slate-700 border-slate-200 shadow-sm">
             <button 
@@ -209,18 +181,6 @@ export const TradeView: React.FC<TradeViewProps> = ({ candles, currentPrice, bal
                 <Layers size={14} />
             </button>
         </div>
-
-        {aiAnalysis && (
-            <div className="absolute top-12 left-2 right-12 dark:bg-slate-800/95 bg-white/95 backdrop-blur-md border dark:border-slate-700 border-slate-200 p-3 rounded-lg text-xs dark:text-slate-200 text-slate-800 shadow-xl z-20 animate-in fade-in zoom-in duration-200">
-               <div className="flex justify-between items-start mb-2 border-b dark:border-slate-700 border-slate-200 pb-2">
-                 <span className="font-bold text-indigo-500 flex items-center gap-1">
-                   <Sparkles size={12} /> Gemini Analysis
-                 </span>
-                 <button onClick={() => setAiAnalysis(null)} className="text-slate-500 hover:text-slate-800 dark:hover:text-white p-1">×</button>
-               </div>
-               <p className="leading-relaxed opacity-90">{aiAnalysis}</p>
-            </div>
-        )}
       </div>
 
       {/* Book / Trades Tab */}
