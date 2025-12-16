@@ -19,6 +19,7 @@ export enum MarginMode {
 export type Language = 'en' | 'zh-CN' | 'zh-TW';
 export type Theme = 'dark' | 'light';
 export type ChartType = 'line' | 'candle' | 'depth';
+export type Timeframe = '1m' | '3m' | '5m' | '15m' | '30m' | '1H' | '2H' | '4H' | '8H' | '12H' | '1D' | '3D' | '1W' | '1M';
 
 export interface Position {
   id: string;

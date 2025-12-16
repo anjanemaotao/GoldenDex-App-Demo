@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Tab, Side, Position, Order, Candle, TradeRecord, TransferRecord, MarginMode, Language, Theme, FundingRecord, MarketTrade } from './types';
+import { Tab, Side, Position, Order, Candle, TradeRecord, TransferRecord, MarginMode, Language, Theme, FundingRecord, MarketTrade, Timeframe } from './types';
 import { generateInitialData, INITIAL_BALANCE, SYMBOL, TRANSLATIONS } from './constants';
 import { BottomNav } from './components/BottomNav';
 import { TradeView } from './components/TradeView';
@@ -21,13 +21,14 @@ const App: React.FC = () => {
   // Settings State
   const [language, setLanguage] = useState<Language>('en');
   const [theme, setTheme] = useState<Theme>('dark');
+  const [timeframe, setTimeframe] = useState<Timeframe>('15m');
 
   // Auth State
   const [isWalletConnected, setIsWalletConnected] = useState<boolean>(false);
   const [externalWalletBalance, setExternalWalletBalance] = useState<number>(5000.00); // Mock External Wallet Funds
   
   // Market Data State
-  const [candles, setCandles] = useState<Candle[]>(generateInitialData(50));
+  const [candles, setCandles] = useState<Candle[]>(generateInitialData(50, '15m'));
   const [currentPrice, setCurrentPrice] = useState<number>(candles[candles.length - 1].close);
   const [marketTrades, setMarketTrades] = useState<MarketTrade[]>([]);
   
@@ -51,6 +52,13 @@ const App: React.FC = () => {
         setToast(prev => ({ ...prev, visible: false }));
     }, 3000);
   };
+
+  // Update Candles when timeframe changes
+  useEffect(() => {
+    const newData = generateInitialData(50, timeframe);
+    setCandles(newData);
+    // Don't reset current price to avoid jumpy UI, just let it sync
+  }, [timeframe]);
 
   // Initial Mock Data
   useEffect(() => {
@@ -89,7 +97,11 @@ const App: React.FC = () => {
       setCandles(prevCandles => {
         const lastCandle = prevCandles[prevCandles.length - 1];
         
-        const volatility = 0.8; // USD movement per tick
+        // Adjust volatility for visual effect based on timeframe, 
+        // though strictly real price moves independently of timeframe chart.
+        // For simplicity in this mock, we just wiggle the last candle.
+        
+        const volatility = 0.8; 
         const move = (Math.random() - 0.5) * volatility;
         newPrice = Math.max(0.01, lastCandle.close + move);
         
@@ -101,19 +113,7 @@ const App: React.FC = () => {
           low: Math.min(lastCandle.low, newPrice)
         };
         
-        // 5% chance to start a new candle
-        if (Math.random() > 0.95) {
-           const newCandle: Candle = {
-             time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-             open: newPrice,
-             close: newPrice,
-             high: newPrice,
-             low: newPrice
-           };
-           return [...prevCandles.slice(1), newCandle];
-        } else {
-           return [...prevCandles.slice(0, -1), updatedLastCandle];
-        }
+        return [...prevCandles.slice(0, -1), updatedLastCandle];
       });
       
       setCurrentPrice(newPrice);
@@ -446,6 +446,8 @@ const App: React.FC = () => {
             marketTrades={marketTrades}
             onPlaceOrder={handlePlaceOrder}
             lang={language}
+            timeframe={timeframe}
+            onTimeframeChange={setTimeframe}
           />
         )}
         {activeTab === Tab.POSITIONS && (

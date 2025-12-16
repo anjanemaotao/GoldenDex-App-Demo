@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Wallet, CreditCard, ArrowRightLeft, Shield, Settings, History, ChevronLeft, Copy, CheckCircle, ExternalLink, ArrowDownLeft, ArrowUpRight, LogOut, User, Coins, Moon, Sun, Loader2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Wallet, CreditCard, ArrowRightLeft, Shield, Settings, History, ChevronLeft, Copy, CheckCircle, ExternalLink, ArrowDownLeft, ArrowUpRight, LogOut, User, Coins, Moon, Sun, Loader2, X, ChevronRight, Lock } from 'lucide-react';
 import { TradeRecord, TransferRecord, Side, Language, Theme, FundingRecord } from '../types';
 import { TRANSLATIONS } from '../constants';
 
@@ -23,6 +23,65 @@ interface AccountViewProps {
 }
 
 type ViewState = 'MAIN' | 'DEPOSIT' | 'WITHDRAW' | 'TRADE_HISTORY' | 'TRANSFER_HISTORY' | 'SETTINGS' | 'FUNDING_HISTORY';
+type LoginStep = 'INITIAL' | 'SELECT_WALLET' | 'CONNECTING' | 'SIGNING' | 'VERIFYING';
+
+const WALLETS = [
+  { 
+    id: 'metamask', 
+    name: 'MetaMask', 
+    color: '#F6851B',
+    icon: (
+      <svg viewBox="0 0 32 32" className="w-6 h-6" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M27.5 2.5L25.5 5.5L28.5 10.5L30.5 4.5L27.5 2.5Z" fill="#E17726" stroke="#E17726" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M4.5 2.5L7.5 5.5L3.5 10.5L1.5 4.5L4.5 2.5Z" fill="#E17726" stroke="#E17726" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M16 23.5L9 28.5L23 28.5L16 23.5Z" fill="#E17726" stroke="#E17726" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M9 11.5L5 17.5L9 28.5L16 23.5L23 28.5L27 17.5L23 11.5L16 16.5L9 11.5Z" fill="#F6851B" stroke="#F6851B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    )
+  },
+  { 
+    id: 'walletconnect', 
+    name: 'WalletConnect', 
+    color: '#3B99FC',
+    icon: (
+       <svg viewBox="0 0 32 32" className="w-6 h-6" fill="none" xmlns="http://www.w3.org/2000/svg">
+         <path d="M26 11C23 8 19 6 16 6C13 6 9 8 6 11" stroke="#3B99FC" strokeWidth="3" strokeLinecap="round"/>
+         <circle cx="8" cy="18" r="3" fill="#3B99FC"/>
+         <circle cx="24" cy="18" r="3" fill="#3B99FC"/>
+         <path d="M16 21V26" stroke="#3B99FC" strokeWidth="3" strokeLinecap="round"/>
+       </svg>
+    )
+  },
+  { 
+    id: 'okx', 
+    name: 'OKX Wallet', 
+    color: '#000000', 
+    icon: (
+        <svg viewBox="0 0 32 32" className="w-6 h-6" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="32" height="32" rx="6" fill="currentColor" className="text-black dark:text-white"/>
+            <path d="M8 8H12V12H8V8Z" fill="currentColor" className="text-white dark:text-black"/>
+            <path d="M20 8H24V12H20V8Z" fill="currentColor" className="text-white dark:text-black"/>
+            <path d="M8 20H12V24H8V20Z" fill="currentColor" className="text-white dark:text-black"/>
+            <path d="M20 20H24V24H20V20Z" fill="currentColor" className="text-white dark:text-black"/>
+            <path d="M14 14H18V18H14V14Z" fill="currentColor" className="text-white dark:text-black"/>
+        </svg>
+    )
+  },
+  { 
+    id: 'binance', 
+    name: 'Binance Wallet', 
+    color: '#F0B90B',
+    icon: (
+        <svg viewBox="0 0 32 32" className="w-6 h-6" fill="none" xmlns="http://www.w3.org/2000/svg">
+             <path d="M16 6L22 12L16 18L10 12L16 6Z" fill="#F0B90B"/>
+             <path d="M10 12L4 18L10 24L16 18L10 12Z" fill="#F0B90B"/>
+             <path d="M22 12L28 18L22 24L16 18L22 12Z" fill="#F0B90B"/>
+             <path d="M16 18L22 24L16 30L10 24L16 18Z" fill="#F0B90B"/>
+             <circle cx="16" cy="18" r="2" fill="#1e293b"/>
+        </svg>
+    )
+  },
+];
 
 export const AccountView: React.FC<AccountViewProps> = ({ 
   balance, 
@@ -43,6 +102,9 @@ export const AccountView: React.FC<AccountViewProps> = ({
   setTheme
 }) => {
   const [view, setView] = useState<ViewState>('MAIN');
+  const [loginStep, setLoginStep] = useState<LoginStep>('INITIAL');
+  const [selectedWallet, setSelectedWallet] = useState<typeof WALLETS[0] | null>(null);
+
   const [depositAmount, setDepositAmount] = useState('');
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [copied, setCopied] = useState(false);
@@ -53,6 +115,14 @@ export const AccountView: React.FC<AccountViewProps> = ({
   // Mock Wallet Address
   const walletAddress = "0x71C7...9A23";
 
+  // Reset login flow when disconnected
+  useEffect(() => {
+    if (!isConnected) {
+        setLoginStep('INITIAL');
+        setSelectedWallet(null);
+    }
+  }, [isConnected]);
+
   const handleCopy = () => {
     navigator.clipboard.writeText("0x71C762B34567890123456789A23"); 
     setCopied(true);
@@ -61,7 +131,6 @@ export const AccountView: React.FC<AccountViewProps> = ({
 
   const handleDepositChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    // Allow digits and a single decimal point
     if (/^\d*\.?\d*$/.test(value)) {
       setDepositAmount(value);
     }
@@ -69,31 +138,22 @@ export const AccountView: React.FC<AccountViewProps> = ({
 
   const handleWithdrawChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    // Allow digits and a single decimal point
     if (/^\d*\.?\d*$/.test(value)) {
       setWithdrawAmount(value);
     }
   };
 
-  // Mock Web3 Interaction for Deposit
   const handleWeb3Deposit = async () => {
     const val = parseFloat(depositAmount);
-    // Validation is now handled by the button state, but keeping safety check
     if (isNaN(val) || val <= 0 || val > externalWalletBalance) return;
 
     setDepositStatus('APPROVING');
-    
-    // Simulate approval delay
     await new Promise(resolve => setTimeout(resolve, 1500));
     setDepositStatus('DEPOSITING');
-
-    // Simulate deposit interaction delay
     await new Promise(resolve => setTimeout(resolve, 2000));
-    
     onDeposit(val);
     setDepositStatus('SUCCESS');
 
-    // Reset after success
     setTimeout(() => {
         setDepositStatus('IDLE');
         setDepositAmount('');
@@ -101,21 +161,16 @@ export const AccountView: React.FC<AccountViewProps> = ({
     }, 1500);
   };
 
-  // Mock Web3 Interaction for Withdraw
   const handleWeb3Withdraw = async () => {
     const val = parseFloat(withdrawAmount);
-    // Validation is now handled by the button state, but keeping safety check
     if (isNaN(val) || val <= 0 || val > balance) return;
 
     setWithdrawStatus('WITHDRAWING');
-
-    // Simulate withdraw interaction delay
     await new Promise(resolve => setTimeout(resolve, 2000));
     
     const success = onWithdraw(val);
     if (success) {
         setWithdrawStatus('SUCCESS');
-        // Reset after success
         setTimeout(() => {
             setWithdrawStatus('IDLE');
             setWithdrawAmount('');
@@ -126,37 +181,190 @@ export const AccountView: React.FC<AccountViewProps> = ({
     }
   };
 
-  // --- Connect Wallet Screen ---
+  // Login Flow Handlers
+  const handleWalletSelect = (wallet: typeof WALLETS[0]) => {
+      setSelectedWallet(wallet);
+      setLoginStep('CONNECTING');
+      // Simulate connection delay
+      setTimeout(() => {
+          setLoginStep('SIGNING');
+      }, 1500);
+  };
+
+  const handleSignMessage = () => {
+      setLoginStep('VERIFYING');
+      // Simulate signing and verification delay
+      setTimeout(() => {
+          onConnect();
+          // Reset internal state after success (though component might unmount or change view)
+          setTimeout(() => {
+             setLoginStep('INITIAL');
+             setSelectedWallet(null);
+          }, 500);
+      }, 1500);
+  };
+
+  // --- Connect Wallet Screen & Login Flow ---
   if (!isConnected) {
     return (
-      <div className="flex flex-col items-center justify-center h-full p-6 dark:bg-slate-900 bg-slate-50 animate-in fade-in duration-500">
-        <div className="w-24 h-24 bg-indigo-500/10 rounded-full flex items-center justify-center mb-8 border border-indigo-500/20 shadow-2xl shadow-indigo-500/10">
-           <Wallet size={48} className="text-indigo-500" />
+      <div className="flex flex-col items-center justify-center h-full p-6 dark:bg-slate-900 bg-slate-50 relative overflow-hidden">
+        {/* Background Decoration */}
+        <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+            <div className="absolute top-[-10%] right-[-10%] w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl"></div>
+            <div className="absolute bottom-[-10%] left-[-10%] w-64 h-64 bg-amber-500/10 rounded-full blur-3xl"></div>
         </div>
-        <h1 className="text-3xl font-bold dark:text-white text-slate-900 mb-3 tracking-tight">{t.connect}</h1>
-        <p className="dark:text-slate-400 text-slate-600 text-center mb-10 text-sm leading-relaxed max-w-xs">
-          Connect your secure wallet to deposit funds, trade XAU/USDC perpetual contracts, and manage your portfolio.
-        </p>
-        
-        <div className="w-full space-y-4 max-w-xs">
-          <button
-            onClick={onConnect}
-            className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-4 rounded-xl shadow-lg shadow-indigo-600/20 transition-all active:scale-95 flex items-center justify-center gap-2"
-          >
-            {t.connect}
-          </button>
-          <div className="text-center">
-            <span className="text-xs text-slate-500">Powered by Simulated Web3</span>
-          </div>
-        </div>
+
+        {/* Initial Connect Screen */}
+        {loginStep === 'INITIAL' && (
+             <div className="flex flex-col items-center justify-center animate-in fade-in zoom-in duration-500 z-10 w-full max-w-sm">
+                <div className="w-24 h-24 bg-gradient-to-tr from-indigo-500/20 to-amber-500/20 rounded-3xl flex items-center justify-center mb-8 border border-white/10 shadow-2xl backdrop-blur-sm relative">
+                    <Wallet size={48} className="text-indigo-500 relative z-10" />
+                    <div className="absolute inset-0 bg-white/5 rounded-3xl animate-pulse"></div>
+                </div>
+                <h1 className="text-3xl font-bold dark:text-white text-slate-900 mb-3 tracking-tight">{t.connect}</h1>
+                <p className="dark:text-slate-400 text-slate-600 text-center mb-12 text-sm leading-relaxed">
+                Connect your secure wallet to deposit funds, trade XAU/USDC perpetual contracts, and manage your portfolio.
+                </p>
+                
+                <button
+                    onClick={() => setLoginStep('SELECT_WALLET')}
+                    className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-4 rounded-xl shadow-lg shadow-indigo-600/20 transition-all active:scale-95 flex items-center justify-center gap-2 group"
+                >
+                    {t.connect}
+                    <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                </button>
+                <div className="mt-6 flex items-center gap-2 text-[10px] text-slate-400">
+                    <Shield size={12} />
+                    <span>Secure & Encrypted Connection</span>
+                </div>
+            </div>
+        )}
+
+        {/* Wallet Selection Modal (Bottom Sheet Style) */}
+        {loginStep === 'SELECT_WALLET' && (
+            <div className="absolute inset-0 z-20 flex items-end justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+                <div className="bg-white dark:bg-slate-800 w-full max-w-md rounded-t-3xl p-6 shadow-2xl animate-in slide-in-from-bottom duration-300">
+                    <div className="flex justify-between items-center mb-6">
+                        <h2 className="text-lg font-bold dark:text-white text-slate-900">Select Wallet</h2>
+                        <button onClick={() => setLoginStep('INITIAL')} className="p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 dark:text-slate-400">
+                            <X size={20} />
+                        </button>
+                    </div>
+                    <div className="space-y-3 pb-8">
+                        {WALLETS.map((wallet) => (
+                            <button 
+                                key={wallet.id}
+                                onClick={() => handleWalletSelect(wallet)}
+                                className="w-full flex items-center justify-between p-4 rounded-xl border dark:border-slate-700 border-slate-100 dark:bg-slate-700/50 bg-slate-50 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors group"
+                            >
+                                <div className="flex items-center gap-4">
+                                    <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-white shadow-sm border border-slate-100">
+                                        {wallet.icon}
+                                    </div>
+                                    <span className="font-bold dark:text-slate-200 text-slate-800">{wallet.name}</span>
+                                </div>
+                                <ChevronRight size={18} className="text-slate-400 group-hover:text-indigo-500 transition-colors" />
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        )}
+
+        {/* Connecting Loader */}
+        {loginStep === 'CONNECTING' && selectedWallet && (
+             <div className="absolute inset-0 z-20 flex items-center justify-center bg-slate-900/80 backdrop-blur-md animate-in fade-in duration-200">
+                <div className="text-center">
+                    <div className="relative w-20 h-20 mx-auto mb-6">
+                         <div className="absolute inset-0 rounded-full border-4 border-slate-700"></div>
+                         <div className="absolute inset-0 rounded-full border-4 border-t-indigo-500 border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>
+                         <div className="absolute inset-0 flex items-center justify-center">
+                             <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm p-1">
+                                {selectedWallet.icon}
+                             </div>
+                         </div>
+                    </div>
+                    <h3 className="text-xl font-bold text-white mb-2">Connecting...</h3>
+                    <p className="text-slate-400 text-sm">Please approve connection in {selectedWallet.name}</p>
+                </div>
+             </div>
+        )}
+
+        {/* Signature Request */}
+        {(loginStep === 'SIGNING' || loginStep === 'VERIFYING') && selectedWallet && (
+            <div className="absolute inset-0 z-30 flex items-end sm:items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+                <div className="bg-white dark:bg-slate-800 w-full max-w-sm rounded-2xl p-6 shadow-2xl animate-in zoom-in-95 duration-300 relative overflow-hidden border dark:border-slate-700">
+                    
+                    {/* Header */}
+                    <div className="flex items-center gap-3 mb-6 border-b dark:border-slate-700 pb-4">
+                         <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-sm border border-slate-100">
+                             {selectedWallet.icon}
+                         </div>
+                         <div>
+                             <h3 className="font-bold dark:text-white text-slate-900 text-sm">Signature Request</h3>
+                             <p className="text-[10px] text-slate-500">{selectedWallet.name}</p>
+                         </div>
+                    </div>
+
+                    {/* Message Content */}
+                    <div className="bg-slate-50 dark:bg-slate-900 rounded-xl p-4 mb-6 border dark:border-slate-700 font-mono text-xs">
+                        <div className="text-slate-500 mb-2">Message to sign:</div>
+                        <div className="dark:text-slate-300 text-slate-700 leading-relaxed break-words">
+                            Welcome to GoldenDex. By signing this message, you agree to the Terms of Service.
+                            <br/><br/>
+                            Nonce: {Date.now()}
+                            <br/>
+                            Timestamp: {new Date().toISOString()}
+                        </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex gap-3">
+                         <button 
+                            onClick={() => {
+                                setLoginStep('INITIAL');
+                                setSelectedWallet(null);
+                            }}
+                            disabled={loginStep === 'VERIFYING'}
+                            className="flex-1 py-3 rounded-xl border border-slate-200 dark:border-slate-700 font-bold text-slate-500 dark:text-slate-400 text-sm"
+                         >
+                            Reject
+                         </button>
+                         <button 
+                            onClick={handleSignMessage}
+                            disabled={loginStep === 'VERIFYING'}
+                            className="flex-1 py-3 rounded-xl bg-indigo-600 text-white font-bold shadow-lg shadow-indigo-500/20 text-sm flex items-center justify-center gap-2"
+                         >
+                             {loginStep === 'VERIFYING' ? (
+                                 <>
+                                    <Loader2 size={16} className="animate-spin" />
+                                    Verifying
+                                 </>
+                             ) : (
+                                 <>
+                                    <Lock size={16} />
+                                    Sign
+                                 </>
+                             )}
+                         </button>
+                    </div>
+
+                    {loginStep === 'VERIFYING' && (
+                        <div className="absolute inset-0 bg-white/50 dark:bg-slate-900/50 z-10 cursor-not-allowed"></div>
+                    )}
+                </div>
+            </div>
+        )}
+
       </div>
     );
   }
 
-  // Define render functions instead of Components to prevent focus loss during re-render
+  // --- Main View (Logged In) ---
+
   const renderSettingsView = () => (
     <div className="h-full flex flex-col bg-slate-50 dark:bg-slate-900 animate-in slide-in-from-right duration-200">
-      <div className="flex items-center gap-3 p-4 border-b dark:border-slate-800 border-slate-200 sticky top-0 bg-slate-50 dark:bg-slate-900">
+      <div className="flex items-center gap-3 p-4 border-b dark:border-slate-800 border-slate-200 sticky top-0 bg-slate-50 dark:bg-slate-900 z-10">
         <button onClick={() => setView('MAIN')} className="p-2 -ml-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full dark:text-white">
           <ChevronLeft size={24} />
         </button>
@@ -217,7 +425,7 @@ export const AccountView: React.FC<AccountViewProps> = ({
 
   const renderFundingHistoryView = () => (
     <div className="h-full flex flex-col bg-slate-50 dark:bg-slate-900 animate-in slide-in-from-right duration-200">
-      <div className="flex items-center gap-3 p-4 border-b dark:border-slate-800 border-slate-200 sticky top-0 bg-slate-50 dark:bg-slate-900">
+      <div className="flex items-center gap-3 p-4 border-b dark:border-slate-800 border-slate-200 sticky top-0 bg-slate-50 dark:bg-slate-900 z-10">
         <button onClick={() => setView('MAIN')} className="p-2 -ml-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full dark:text-white">
           <ChevronLeft size={24} />
         </button>
@@ -451,7 +659,7 @@ export const AccountView: React.FC<AccountViewProps> = ({
 
   const renderTradeHistoryView = () => (
     <div className="h-full flex flex-col bg-slate-50 dark:bg-slate-900 animate-in slide-in-from-right duration-200">
-      <div className="flex items-center gap-3 p-4 border-b dark:border-slate-800 border-slate-200 sticky top-0 bg-slate-50 dark:bg-slate-900">
+      <div className="flex items-center gap-3 p-4 border-b dark:border-slate-800 border-slate-200 sticky top-0 bg-slate-50 dark:bg-slate-900 z-10">
         <button onClick={() => setView('MAIN')} className="p-2 -ml-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full dark:text-white">
           <ChevronLeft size={24} />
         </button>
@@ -496,7 +704,7 @@ export const AccountView: React.FC<AccountViewProps> = ({
 
   const renderTransferHistoryView = () => (
     <div className="h-full flex flex-col bg-slate-50 dark:bg-slate-900 animate-in slide-in-from-right duration-200">
-      <div className="flex items-center gap-3 p-4 border-b dark:border-slate-800 border-slate-200 sticky top-0 bg-slate-50 dark:bg-slate-900">
+      <div className="flex items-center gap-3 p-4 border-b dark:border-slate-800 border-slate-200 sticky top-0 bg-slate-50 dark:bg-slate-900 z-10">
         <button onClick={() => setView('MAIN')} className="p-2 -ml-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full dark:text-white">
           <ChevronLeft size={24} />
         </button>
@@ -536,8 +744,6 @@ export const AccountView: React.FC<AccountViewProps> = ({
     </div>
   );
 
-  // --- Main View ---
-
   if (view === 'DEPOSIT') return renderDepositView();
   if (view === 'WITHDRAW') return renderWithdrawView();
   if (view === 'TRADE_HISTORY') return renderTradeHistoryView();
@@ -563,7 +769,7 @@ export const AccountView: React.FC<AccountViewProps> = ({
                 </div>
                 <div className="flex items-center gap-1.5 mt-0.5">
                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-                   <span className="text-[10px] text-emerald-500 font-medium">Connected</span>
+                   <span className="text-[10px] text-emerald-500 font-medium">Connected to {selectedWallet?.name || 'Wallet'}</span>
                 </div>
              </div>
          </div>

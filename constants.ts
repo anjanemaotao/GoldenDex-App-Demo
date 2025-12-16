@@ -1,25 +1,51 @@
-import { Candle, Language } from './types';
+import { Candle, Language, Timeframe } from './types';
 
 // Helper to generate some realistic looking random walk data for Gold
 const startPrice = 2030.50;
 let currentPrice = startPrice;
 
-export const generateInitialData = (count: number): Candle[] => {
+export const generateInitialData = (count: number, timeframe: Timeframe = '15m'): Candle[] => {
   const data: Candle[] = [];
   const now = new Date();
   
+  let intervalMinutes = 15;
+  switch(timeframe) {
+      case '1m': intervalMinutes = 1; break;
+      case '3m': intervalMinutes = 3; break;
+      case '5m': intervalMinutes = 5; break;
+      case '15m': intervalMinutes = 15; break;
+      case '30m': intervalMinutes = 30; break;
+      case '1H': intervalMinutes = 60; break;
+      case '2H': intervalMinutes = 120; break;
+      case '4H': intervalMinutes = 240; break;
+      case '8H': intervalMinutes = 480; break;
+      case '12H': intervalMinutes = 720; break;
+      case '1D': intervalMinutes = 1440; break;
+      case '3D': intervalMinutes = 4320; break;
+      case '1W': intervalMinutes = 10080; break;
+      case '1M': intervalMinutes = 43200; break;
+  }
+
   for (let i = count; i > 0; i--) {
-    const time = new Date(now.getTime() - i * 15 * 60 * 1000); // 15 min candles
-    const move = (Math.random() - 0.5) * 2;
+    const time = new Date(now.getTime() - i * intervalMinutes * 60 * 1000); 
+    const move = (Math.random() - 0.5) * 2 * (intervalMinutes / 15); // Scale volatility by time
     const open = currentPrice;
     const close = open + move;
-    const high = Math.max(open, close) + Math.random() * 0.5;
-    const low = Math.min(open, close) - Math.random() * 0.5;
+    const high = Math.max(open, close) + Math.random() * 0.5 * (intervalMinutes / 15);
+    const low = Math.min(open, close) - Math.random() * 0.5 * (intervalMinutes / 15);
     
     currentPrice = close;
     
+    let timeStr = '';
+    // Format logic
+    if (['1D', '3D', '1W', '1M'].includes(timeframe)) {
+        timeStr = time.toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' });
+    } else {
+        timeStr = time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
     data.push({
-      time: time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      time: timeStr,
       open,
       high,
       low,
@@ -247,7 +273,7 @@ export const TRANSLATIONS = {
     openInterest: '未平仓合约',
     notifications: {
         orderPlaced: '下单成功',
-        positionClosed: '平仓成功',
+        positionClosed: '平倉成功',
         orderCancelled: '委托已取消',
         positionsClosed: '所有仓位已平倉',
         ordersCancelled: '所有委托已取消',

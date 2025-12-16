@@ -3,7 +3,7 @@ import { Settings2, Info, X, BarChart2, TrendingUp, Layers } from 'lucide-react'
 import { CandleChart } from './CandleChart';
 import { OrderBook } from './OrderBook';
 import { DepthChart } from './DepthChart';
-import { Candle, Side, MarginMode, Language, ChartType, MarketTrade } from '../types';
+import { Candle, Side, MarginMode, Language, ChartType, MarketTrade, Timeframe } from '../types';
 import { TRANSLATIONS } from '../constants';
 
 interface TradeViewProps {
@@ -13,9 +13,22 @@ interface TradeViewProps {
   marketTrades?: MarketTrade[];
   onPlaceOrder: (side: Side, size: number, price: number, type: 'MARKET' | 'LIMIT', marginMode: MarginMode) => void;
   lang: Language;
+  timeframe: Timeframe;
+  onTimeframeChange: (tf: Timeframe) => void;
 }
 
-export const TradeView: React.FC<TradeViewProps> = ({ candles, currentPrice, balance, marketTrades = [], onPlaceOrder, lang }) => {
+const TIMEFRAMES: Timeframe[] = ['1m', '3m', '5m', '15m', '30m', '1H', '2H', '4H', '8H', '12H', '1D', '3D', '1W', '1M'];
+
+export const TradeView: React.FC<TradeViewProps> = ({ 
+  candles, 
+  currentPrice, 
+  balance, 
+  marketTrades = [], 
+  onPlaceOrder, 
+  lang,
+  timeframe,
+  onTimeframeChange
+}) => {
   const t = TRANSLATIONS[lang];
   const [orderType, setOrderType] = useState<'MARKET' | 'LIMIT'>('MARKET');
   const [marginMode, setMarginMode] = useState<MarginMode>(MarginMode.CROSS);
@@ -83,6 +96,9 @@ export const TradeView: React.FC<TradeViewProps> = ({ candles, currentPrice, bal
   // Mock Data
   const markPrice = currentPrice * 1.0001;
   const fundingRate = 0.0042; // 0.0042%
+  
+  // Calculate Estimated APR = Current Funding Rate * 365
+  const estimatedAPR = (fundingRate * 365).toFixed(2);
 
   return (
     <div className="flex flex-col h-full pb-20 overflow-y-auto no-scrollbar dark:bg-slate-900 bg-slate-50 relative">
@@ -154,14 +170,27 @@ export const TradeView: React.FC<TradeViewProps> = ({ candles, currentPrice, bal
       </div>
 
       {/* Chart */}
-      <div className="relative border-b dark:border-slate-800 border-slate-200 dark:bg-slate-900 bg-white min-h-[256px]">
+      <div className="relative border-b dark:border-slate-800 border-slate-200 dark:bg-slate-900 bg-white min-h-[290px]">
+        {/* Timeframe Selector */}
+        <div className="flex items-center gap-1 overflow-x-auto no-scrollbar px-2 py-2 border-b dark:border-slate-800 border-slate-100">
+           {TIMEFRAMES.map((tf) => (
+               <button
+                  key={tf}
+                  onClick={() => onTimeframeChange(tf)}
+                  className={`text-[10px] font-bold px-2 py-1 rounded-md whitespace-nowrap transition-colors ${timeframe === tf ? 'bg-indigo-500/10 text-indigo-500' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
+               >
+                   {tf}
+               </button>
+           ))}
+        </div>
+
         {chartType === 'depth' ? (
            <DepthChart currentPrice={currentPrice} />
         ) : (
            <CandleChart data={candles} type={chartType} />
         )}
 
-        <div className="absolute top-2 right-2 bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5 flex border dark:border-slate-700 border-slate-200 shadow-sm">
+        <div className="absolute top-10 right-2 bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5 flex border dark:border-slate-700 border-slate-200 shadow-sm z-10">
             <button 
                 onClick={() => setChartType('line')}
                 className={`p-1.5 rounded-md transition-colors ${chartType === 'line' ? 'bg-white dark:bg-slate-600 shadow text-indigo-500' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
@@ -395,7 +424,7 @@ export const TradeView: React.FC<TradeViewProps> = ({ candles, currentPrice, bal
                      </div>
                      <div className="flex justify-between text-sm">
                          <span className="text-slate-500">{t.fundingDetails.apr}</span>
-                         <span className="font-mono text-orange-400">36.5%</span>
+                         <span className="font-mono text-orange-400">{estimatedAPR}%</span>
                      </div>
                      <div className="bg-indigo-50 dark:bg-slate-700/50 p-3 rounded-lg mt-4">
                          <div className="flex gap-2">
