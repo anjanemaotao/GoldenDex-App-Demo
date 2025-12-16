@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Wallet, CreditCard, ArrowRightLeft, Shield, Settings, History, ChevronLeft, Copy, CheckCircle, ExternalLink, ArrowDownLeft, ArrowUpRight, LogOut, User, Coins, Moon, Sun, Loader2, X, ChevronRight, Lock } from 'lucide-react';
-import { TradeRecord, TransferRecord, Side, Language, Theme, FundingRecord } from '../types';
+import { Wallet, CreditCard, ArrowRightLeft, Shield, Settings, History, ChevronLeft, Copy, CheckCircle, ExternalLink, ArrowDownLeft, ArrowUpRight, LogOut, User, Coins, Moon, Sun, Loader2, X, ChevronRight, Lock, Filter, Sliders } from 'lucide-react';
+import { FillRecord, TransferRecord, Side, Language, Theme, CashFlowRecord, CashFlowType, PositionMode } from '../types';
 import { TRANSLATIONS } from '../constants';
 
 interface AccountViewProps {
@@ -8,9 +8,9 @@ interface AccountViewProps {
   equity: number;
   totalPositionValue: number;
   externalWalletBalance: number;
-  tradeHistory: TradeRecord[];
+  fillHistory: FillRecord[];
   transferHistory: TransferRecord[];
-  fundingHistory: FundingRecord[];
+  cashFlowHistory: CashFlowRecord[];
   onDeposit: (amount: number) => void;
   onWithdraw: (amount: number) => boolean;
   isConnected: boolean;
@@ -20,9 +20,11 @@ interface AccountViewProps {
   setLanguage: (lang: Language) => void;
   theme: Theme;
   setTheme: (theme: Theme) => void;
+  positionMode: PositionMode;
+  onSetPositionMode: (mode: PositionMode) => void;
 }
 
-type ViewState = 'MAIN' | 'DEPOSIT' | 'WITHDRAW' | 'TRADE_HISTORY' | 'TRANSFER_HISTORY' | 'SETTINGS' | 'FUNDING_HISTORY';
+type ViewState = 'MAIN' | 'DEPOSIT' | 'WITHDRAW' | 'FILL_HISTORY' | 'TRANSFER_HISTORY' | 'SETTINGS' | 'CASH_FLOW_HISTORY';
 type LoginStep = 'INITIAL' | 'SELECT_WALLET' | 'CONNECTING' | 'SIGNING' | 'VERIFYING';
 
 const WALLETS = [
@@ -88,9 +90,9 @@ export const AccountView: React.FC<AccountViewProps> = ({
   equity, 
   totalPositionValue,
   externalWalletBalance,
-  tradeHistory, 
+  fillHistory, 
   transferHistory,
-  fundingHistory,
+  cashFlowHistory,
   onDeposit,
   onWithdraw,
   isConnected,
@@ -99,7 +101,9 @@ export const AccountView: React.FC<AccountViewProps> = ({
   language,
   setLanguage,
   theme,
-  setTheme
+  setTheme,
+  positionMode,
+  onSetPositionMode
 }) => {
   const [view, setView] = useState<ViewState>('MAIN');
   const [loginStep, setLoginStep] = useState<LoginStep>('INITIAL');
@@ -110,6 +114,10 @@ export const AccountView: React.FC<AccountViewProps> = ({
   const [copied, setCopied] = useState(false);
   const [depositStatus, setDepositStatus] = useState<'IDLE' | 'APPROVING' | 'DEPOSITING' | 'SUCCESS'>('IDLE');
   const [withdrawStatus, setWithdrawStatus] = useState<'IDLE' | 'WITHDRAWING' | 'SUCCESS'>('IDLE');
+  
+  // Filter for Cash Flow
+  const [cashFlowFilter, setCashFlowFilter] = useState<CashFlowType | 'ALL'>('ALL');
+
   const t = TRANSLATIONS[language];
 
   // Mock Wallet Address
@@ -371,6 +379,21 @@ export const AccountView: React.FC<AccountViewProps> = ({
         <h2 className="text-lg font-bold dark:text-white text-slate-900">{t.settings}</h2>
       </div>
       <div className="p-4 space-y-6">
+         {/* Position Mode */}
+         <div>
+            <label className="text-xs dark:text-slate-400 text-slate-500 block mb-2 font-bold uppercase tracking-wider">{t.positionMode}</label>
+            <div className="bg-white dark:bg-slate-800 rounded-xl overflow-hidden border dark:border-slate-700 border-slate-200">
+                <div onClick={() => onSetPositionMode(PositionMode.ONE_WAY)} className="p-4 flex justify-between items-center cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 border-b dark:border-slate-700 border-slate-100">
+                    <span className="dark:text-white text-slate-900">{t.oneWayMode}</span>
+                    {positionMode === PositionMode.ONE_WAY && <CheckCircle size={18} className="text-emerald-500" />}
+                </div>
+                <div onClick={() => onSetPositionMode(PositionMode.HEDGE)} className="p-4 flex justify-between items-center cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700">
+                    <span className="dark:text-white text-slate-900">{t.hedgeMode}</span>
+                    {positionMode === PositionMode.HEDGE && <CheckCircle size={18} className="text-emerald-500" />}
+                </div>
+            </div>
+         </div>
+
          {/* Language */}
          <div>
             <label className="text-xs dark:text-slate-400 text-slate-500 block mb-2 font-bold uppercase tracking-wider">{t.language}</label>
@@ -423,42 +446,72 @@ export const AccountView: React.FC<AccountViewProps> = ({
     </div>
   );
 
-  const renderFundingHistoryView = () => (
-    <div className="h-full flex flex-col bg-slate-50 dark:bg-slate-900 animate-in slide-in-from-right duration-200">
-      <div className="flex items-center gap-3 p-4 border-b dark:border-slate-800 border-slate-200 sticky top-0 bg-slate-50 dark:bg-slate-900 z-10">
-        <button onClick={() => setView('MAIN')} className="p-2 -ml-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full dark:text-white">
-          <ChevronLeft size={24} />
-        </button>
-        <h2 className="text-lg font-bold dark:text-white text-slate-900">{t.funding}</h2>
-      </div>
-      <div className="flex-1 overflow-y-auto no-scrollbar p-4 space-y-3 pb-24">
-        {fundingHistory.length === 0 ? (
-           <div className="text-center dark:text-slate-500 text-slate-400 mt-10">No records yet</div>
-        ) : (
-           fundingHistory.map((item) => (
-             <div key={item.id} className="bg-white dark:bg-slate-800 border dark:border-slate-700 border-slate-200 p-4 rounded-xl flex items-center justify-between shadow-sm">
-                <div>
-                  <div className="font-bold dark:text-white text-slate-900 text-sm">
-                    Funding Fee
-                  </div>
-                  <div className="text-xs dark:text-slate-500 text-slate-400 mt-0.5">
-                    {new Date(item.timestamp).toLocaleString()}
-                  </div>
+  const renderCashFlowHistoryView = () => {
+    const filteredHistory = cashFlowHistory.filter(item => 
+        cashFlowFilter === 'ALL' || item.type === cashFlowFilter
+    );
+
+    return (
+        <div className="h-full flex flex-col bg-slate-50 dark:bg-slate-900 animate-in slide-in-from-right duration-200">
+          <div className="flex flex-col border-b dark:border-slate-800 border-slate-200 sticky top-0 bg-slate-50 dark:bg-slate-900 z-10">
+            <div className="flex items-center gap-3 p-4">
+                <button onClick={() => setView('MAIN')} className="p-2 -ml-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full dark:text-white">
+                <ChevronLeft size={24} />
+                </button>
+                <h2 className="text-lg font-bold dark:text-white text-slate-900">{t.funding}</h2>
+            </div>
+            
+            {/* Filter Dropdown */}
+            <div className="px-4 pb-3">
+                <div className="relative">
+                    <select 
+                        value={cashFlowFilter}
+                        onChange={(e) => setCashFlowFilter(e.target.value as CashFlowType | 'ALL')}
+                        className="w-full appearance-none bg-white dark:bg-slate-800 border dark:border-slate-700 border-slate-200 rounded-xl py-3 px-4 pl-10 text-sm font-medium dark:text-white text-slate-900 focus:outline-none focus:border-indigo-500 cursor-pointer shadow-sm"
+                    >
+                        <option value="ALL">{t.all}</option>
+                        <option value="TRANSACTION_FEE">{t.cashFlowTypes.TRANSACTION_FEE}</option>
+                        <option value="FUNDING_FEE">{t.cashFlowTypes.FUNDING_FEE}</option>
+                        <option value="REALIZED_PNL">{t.cashFlowTypes.REALIZED_PNL}</option>
+                        <option value="LIQUIDATION_FEE">{t.cashFlowTypes.LIQUIDATION_FEE}</option>
+                    </select>
+                    <Filter size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                    <ChevronRight size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 rotate-90 pointer-events-none" />
                 </div>
-                <div className="text-right">
-                   <div className={`font-mono font-bold ${item.amount >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                     {item.amount >= 0 ? '+' : ''}{item.amount.toFixed(4)}
-                   </div>
-                   <div className="text-[10px] dark:text-slate-400 text-slate-500">
-                     Rate: {(item.rate * 100).toFixed(4)}%
-                   </div>
-                </div>
-             </div>
-           ))
-        )}
-      </div>
-    </div>
-  );
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto no-scrollbar p-4 space-y-3 pb-24">
+            {filteredHistory.length === 0 ? (
+               <div className="text-center dark:text-slate-500 text-slate-400 mt-10">No records found</div>
+            ) : (
+               filteredHistory.map((item) => (
+                 <div key={item.id} className="bg-white dark:bg-slate-800 border dark:border-slate-700 border-slate-200 p-4 rounded-xl flex items-center justify-between shadow-sm">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                          <span className="font-bold dark:text-white text-slate-900 text-sm">
+                            {t.cashFlowTypes[item.type]}
+                          </span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs">
+                         <span className="dark:text-slate-400 text-slate-500 font-mono">{new Date(item.timestamp).toLocaleString()}</span>
+                         <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-600"></span>
+                         <span className="dark:text-slate-300 text-slate-600 font-medium">{item.symbol}</span>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                       <div className={`font-mono font-bold text-base ${item.amount >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                         {item.amount >= 0 ? '+' : ''}{item.amount.toFixed(4)}
+                       </div>
+                       <div className="text-[10px] dark:text-slate-500 text-slate-400 mt-0.5">USD</div>
+                    </div>
+                 </div>
+               ))
+            )}
+          </div>
+        </div>
+    );
+  };
 
   const renderDepositView = () => {
     const depVal = parseFloat(depositAmount);
@@ -657,7 +710,7 @@ export const AccountView: React.FC<AccountViewProps> = ({
     );
   };
 
-  const renderTradeHistoryView = () => (
+  const renderFillHistoryView = () => (
     <div className="h-full flex flex-col bg-slate-50 dark:bg-slate-900 animate-in slide-in-from-right duration-200">
       <div className="flex items-center gap-3 p-4 border-b dark:border-slate-800 border-slate-200 sticky top-0 bg-slate-50 dark:bg-slate-900 z-10">
         <button onClick={() => setView('MAIN')} className="p-2 -ml-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full dark:text-white">
@@ -666,34 +719,48 @@ export const AccountView: React.FC<AccountViewProps> = ({
         <h2 className="text-lg font-bold dark:text-white text-slate-900">{t.history}</h2>
       </div>
       <div className="flex-1 overflow-y-auto no-scrollbar p-4 space-y-3 pb-24">
-        {tradeHistory.length === 0 ? (
+        {fillHistory.length === 0 ? (
            <div className="text-center dark:text-slate-500 text-slate-400 mt-10">No transactions yet</div>
         ) : (
-           tradeHistory.map((trade) => (
-             <div key={trade.id} className="bg-white dark:bg-slate-800 border dark:border-slate-700 border-slate-200 p-4 rounded-xl shadow-sm">
+           fillHistory.map((fill) => (
+             <div key={fill.id} className="bg-white dark:bg-slate-800 border dark:border-slate-700 border-slate-200 p-4 rounded-xl shadow-sm">
                <div className="flex justify-between items-start mb-2">
                   <div>
                     <div className="font-bold dark:text-white text-slate-900 flex items-center gap-2">
-                      {trade.symbol} 
-                      <span className={`text-[10px] px-1.5 rounded ${trade.side === Side.LONG ? 'bg-emerald-500/20 text-emerald-500' : 'bg-rose-500/20 text-rose-500'}`}>
-                         {trade.side}
+                      {fill.symbol} 
+                      <span className={`text-[10px] px-1.5 rounded ${fill.side === Side.LONG ? 'bg-emerald-500/20 text-emerald-500' : 'bg-rose-500/20 text-rose-500'}`}>
+                         {fill.side === Side.LONG ? t.long.split('/')[0] : t.short.split('/')[0]}
                       </span>
                     </div>
-                    <div className="text-xs dark:text-slate-400 text-slate-500 mt-1">
-                      {new Date(trade.timestamp).toLocaleString()}
+                    <div className="text-xs dark:text-slate-400 text-slate-500 mt-1 font-mono">
+                      {new Date(fill.timestamp).toLocaleString()}
                     </div>
-                  </div>
-                  <div className="text-right">
-                    <div className={`font-mono font-bold ${trade.pnl >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                      {trade.pnl >= 0 ? '+' : ''}{trade.pnl.toFixed(2)} USD
-                    </div>
-                    <div className="text-xs dark:text-slate-500 text-slate-400 mt-1">Realized PnL</div>
                   </div>
                </div>
-               <div className="grid grid-cols-2 gap-2 text-xs dark:text-slate-400 text-slate-500 pt-2 border-t dark:border-slate-700/50 border-slate-100 mt-2">
-                 <div>Size: <span className="dark:text-slate-200 text-slate-700">{trade.size}</span></div>
-                 <div className="text-right">Entry: <span className="dark:text-slate-200 text-slate-700">{trade.entryPrice.toFixed(2)}</span></div>
-                 <div>Close: <span className="dark:text-slate-200 text-slate-700">{trade.closePrice.toFixed(2)}</span></div>
+               
+               <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-xs dark:text-slate-400 text-slate-500 pt-2 border-t dark:border-slate-700/50 border-slate-100 mt-2">
+                 <div className="flex justify-between">
+                    <span>{t.tradeHistoryFields.price}</span>
+                    <span className="dark:text-slate-200 text-slate-700 font-mono">{fill.price.toFixed(2)}</span>
+                 </div>
+                 <div className="flex justify-between">
+                    <span>{t.tradeHistoryFields.qty}</span>
+                    <span className="dark:text-slate-200 text-slate-700 font-mono">{fill.size}</span>
+                 </div>
+                 <div className="flex justify-between">
+                    <span>{t.tradeHistoryFields.value}</span>
+                    <span className="dark:text-slate-200 text-slate-700 font-mono">{fill.value.toFixed(2)}</span>
+                 </div>
+                 <div className="flex justify-between">
+                    <span>{t.tradeHistoryFields.fee}</span>
+                    <span className="dark:text-slate-200 text-slate-700 font-mono">{fill.fee.toFixed(2)}</span>
+                 </div>
+                 <div className="flex justify-between col-span-2">
+                    <span>{t.tradeHistoryFields.realizedPnl}</span>
+                    <span className={`font-mono font-bold ${fill.realizedPnl >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                        {fill.realizedPnl.toFixed(2)}
+                    </span>
+                 </div>
                </div>
              </div>
            ))
@@ -746,10 +813,10 @@ export const AccountView: React.FC<AccountViewProps> = ({
 
   if (view === 'DEPOSIT') return renderDepositView();
   if (view === 'WITHDRAW') return renderWithdrawView();
-  if (view === 'TRADE_HISTORY') return renderTradeHistoryView();
+  if (view === 'FILL_HISTORY') return renderFillHistoryView();
   if (view === 'TRANSFER_HISTORY') return renderTransferHistoryView();
   if (view === 'SETTINGS') return renderSettingsView();
-  if (view === 'FUNDING_HISTORY') return renderFundingHistoryView();
+  if (view === 'CASH_FLOW_HISTORY') return renderCashFlowHistoryView();
 
   return (
     <div className="p-4 h-full pb-24 overflow-y-auto no-scrollbar animate-in fade-in duration-200 bg-slate-50 dark:bg-slate-900">
@@ -828,7 +895,7 @@ export const AccountView: React.FC<AccountViewProps> = ({
       {/* Menu List */}
       <div className="dark:bg-slate-800 bg-white rounded-xl overflow-hidden border dark:border-slate-700 border-slate-200 shadow-sm">
         <div 
-          onClick={() => setView('TRADE_HISTORY')}
+          onClick={() => setView('FILL_HISTORY')}
           className="flex items-center justify-between p-4 dark:hover:bg-slate-700/50 hover:bg-slate-50 cursor-pointer border-b dark:border-slate-700 border-slate-100"
         >
            <div className="flex items-center gap-3">
@@ -850,7 +917,7 @@ export const AccountView: React.FC<AccountViewProps> = ({
         </div>
         
         <div 
-          onClick={() => setView('FUNDING_HISTORY')}
+          onClick={() => setView('CASH_FLOW_HISTORY')}
           className="flex items-center justify-between p-4 dark:hover:bg-slate-700/50 hover:bg-slate-50 cursor-pointer border-b dark:border-slate-700 border-slate-100"
         >
            <div className="flex items-center gap-3">

@@ -31,14 +31,29 @@ export const PositionsView: React.FC<PositionsViewProps> = ({
   const t = TRANSLATIONS[lang];
   const [editingPosId, setEditingPosId] = useState<string | null>(null);
   const [marginAction, setMarginAction] = useState<'ADD' | 'REMOVE'>('ADD');
-  const [marginInput, setMarginInput] = useState<string>('');
+  
+  // Independent states for Add and Remove inputs
+  const [addMarginInput, setAddMarginInput] = useState<string>('');
+  const [removeMarginInput, setRemoveMarginInput] = useState<string>('');
+  
   const [showCloseAllConfirm, setShowCloseAllConfirm] = useState(false);
 
+  // Helper to get correct input state
+  const currentMarginInput = marginAction === 'ADD' ? addMarginInput : removeMarginInput;
+  const setMarginInput = (val: string) => {
+      if (marginAction === 'ADD') {
+          setAddMarginInput(val);
+      } else {
+          setRemoveMarginInput(val);
+      }
+  };
+
   const handleConfirmMargin = () => {
-    if (editingPosId && marginInput) {
-        onUpdateMargin(editingPosId, parseFloat(marginInput), marginAction);
+    if (editingPosId && currentMarginInput) {
+        onUpdateMargin(editingPosId, parseFloat(currentMarginInput), marginAction);
         setEditingPosId(null);
-        setMarginInput('');
+        setAddMarginInput('');
+        setRemoveMarginInput('');
     }
   };
   
@@ -52,7 +67,7 @@ export const PositionsView: React.FC<PositionsViewProps> = ({
       const pos = positions.find(p => p.id === editingPosId);
       if (!pos || !pos.isolatedMargin) return null;
 
-      const inputVal = parseFloat(marginInput) || 0;
+      const inputVal = parseFloat(currentMarginInput) || 0;
       const change = marginAction === 'ADD' ? inputVal : -inputVal;
       const currentMargin = pos.isolatedMargin;
       const newMargin = Math.max(0, currentMargin + change);
@@ -99,7 +114,7 @@ export const PositionsView: React.FC<PositionsViewProps> = ({
 
   // Validate Input for Button State
   const isMarginInputValid = () => {
-      const val = parseFloat(marginInput);
+      const val = parseFloat(currentMarginInput);
       if (isNaN(val) || val <= 0) return false;
       
       if (marginAction === 'ADD') {
@@ -245,7 +260,12 @@ export const PositionsView: React.FC<PositionsViewProps> = ({
                     {marginUsed.toFixed(2)}
                     {pos.marginMode === MarginMode.ISOLATED && (
                         <button 
-                            onClick={() => { setEditingPosId(pos.id); setMarginAction('ADD'); }}
+                            onClick={() => { 
+                                setEditingPosId(pos.id); 
+                                setMarginAction('ADD'); 
+                                setAddMarginInput('');
+                                setRemoveMarginInput('');
+                            }}
                             className="bg-indigo-500/20 text-indigo-500 p-0.5 rounded hover:bg-indigo-500/30"
                         >
                             <Plus size={10} />
@@ -320,7 +340,7 @@ export const PositionsView: React.FC<PositionsViewProps> = ({
                     </div>
                     <input 
                         type="number" 
-                        value={marginInput}
+                        value={currentMarginInput}
                         onChange={(e) => setMarginInput(e.target.value)}
                         className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-3 font-mono text-lg outline-none focus:border-indigo-500"
                         autoFocus

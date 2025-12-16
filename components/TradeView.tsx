@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings2, Info, X, BarChart2, TrendingUp, Layers } from 'lucide-react';
+import { Settings2, Info, X, BarChart2, TrendingUp, Layers, ChevronDown, Edit2 } from 'lucide-react';
 import { CandleChart } from './CandleChart';
 import { OrderBook } from './OrderBook';
 import { DepthChart } from './DepthChart';
@@ -33,11 +33,15 @@ export const TradeView: React.FC<TradeViewProps> = ({
   const [orderType, setOrderType] = useState<'MARKET' | 'LIMIT'>('MARKET');
   const [marginMode, setMarginMode] = useState<MarginMode>(MarginMode.CROSS);
   const [chartType, setChartType] = useState<ChartType>('line');
-  const [amount, setAmount] = useState<string>('1.00');
+  const [amount, setAmount] = useState<string>('');
+  const [sizeUnit, setSizeUnit] = useState<'XAU' | 'USDC'>('XAU');
   const [limitPrice, setLimitPrice] = useState<string>(currentPrice.toFixed(2));
   const [leverage, setLeverage] = useState<number>(20);
   const [showFundingModal, setShowFundingModal] = useState(false);
+  const [showLeverageModal, setShowLeverageModal] = useState(false);
+  const [tempLeverage, setTempLeverage] = useState(20);
   const [activeBookTab, setActiveBookTab] = useState<'book' | 'trades'>('book');
+  const [sizeSliderValue, setSizeSliderValue] = useState<number>(0);
   
   // Market Stats State
   const [countdown, setCountdown] = useState<string>('00:59:59');
@@ -58,7 +62,7 @@ export const TradeView: React.FC<TradeViewProps> = ({
     }).format(num);
   };
 
-  // Update limit price default when switching to limit if empty, but usually keep it static if user typed
+  // Update limit price default when switching to limit if empty
   useEffect(() => {
     if (orderType === 'LIMIT' && !limitPrice) {
       setLimitPrice(currentPrice.toFixed(2));
@@ -80,24 +84,89 @@ export const TradeView: React.FC<TradeViewProps> = ({
     return () => clearInterval(timer);
   }, []);
 
+  const executionPrice = orderType === 'LIMIT' ? (parseFloat(limitPrice) || currentPrice) : currentPrice;
+  
+  // Calculate Max Buy based on Unit
+  const maxBuyXAU = executionPrice > 0 ? (balance * leverage) / executionPrice : 0;
+  const maxBuyUSDC = balance * leverage; // Approx Notional Value
+
   const handleTrade = (side: Side) => {
-    const size = parseFloat(amount);
+    let size = parseFloat(amount);
     const price = orderType === 'LIMIT' ? parseFloat(limitPrice) : currentPrice;
     
     if (isNaN(size) || size <= 0) return;
     if (orderType === 'LIMIT' && (isNaN(price) || price <= 0)) return;
 
+    // Convert USDC Amount to XAU Size if necessary
+    if (sizeUnit === 'USDC') {
+        size = size / price;
+    }
+
     onPlaceOrder(side, size, price, orderType, marginMode);
+    setAmount('');
+    setSizeSliderValue(0);
   };
 
-  const executionPrice = orderType === 'LIMIT' ? parseFloat(limitPrice) || currentPrice : currentPrice;
-  const maxBuy = (balance * leverage) / executionPrice;
+  const handleUnitChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+      const newUnit = e.target.value as 'XAU' | 'USDC';
+      
+      // Auto-convert existing amount
+      if (amount && !isNaN(parseFloat(amount))) {
+          const val = parseFloat(amount);
+          if (newUnit === 'USDC' && sizeUnit === 'XAU') {
+              setAmount((val * executionPrice).toFixed(2));
+          } else if (newUnit === 'XAU' && sizeUnit === 'USDC') {
+              setAmount((val / executionPrice).toFixed(4));
+          }
+      }
+      
+      setSizeUnit(newUnit);
+  };
+
+  const handleSizeSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = parseInt(e.target.value);
+    setSizeSliderValue(val);
+    if (val === 0) {
+        setAmount('');
+    } else {
+        if (sizeUnit === 'XAU') {
+            const calculatedAmount = (maxBuyXAU * val) / 100;
+            setAmount(calculatedAmount.toFixed(4));
+        } else {
+            const calculatedAmount = (maxBuyUSDC * val) / 100;
+            setAmount(calculatedAmount.toFixed(2));
+        }
+    }
+  };
+
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const val = e.target.value;
+      setAmount(val);
+      const num = parseFloat(val);
+      if (!isNaN(num)) {
+          if (sizeUnit === 'XAU') {
+              if (maxBuyXAU > 0) setSizeSliderValue(Math.min(100, (num / maxBuyXAU) * 100));
+          } else {
+              if (maxBuyUSDC > 0) setSizeSliderValue(Math.min(100, (num / maxBuyUSDC) * 100));
+          }
+      } else {
+          setSizeSliderValue(0);
+      }
+  };
+
+  // Calculations for Display
+  const currentSizeXAU = sizeUnit === 'XAU' ? parseFloat(amount) : (parseFloat(amount) / executionPrice);
+  const marginRequired = amount ? (currentSizeXAU * executionPrice / leverage) : 0;
+  
+  // Est. Liq Price Formulas (Simplified)
+  // Long: Entry * (1 - 1/Lev)
+  // Short: Entry * (1 + 1/Lev)
+  const longLiqPrice = executionPrice * (1 - 1/leverage);
+  const shortLiqPrice = executionPrice * (1 + 1/leverage);
 
   // Mock Data
   const markPrice = currentPrice * 1.0001;
   const fundingRate = 0.0042; // 0.0042%
-  
-  // Calculate Estimated APR = Current Funding Rate * 365
   const estimatedAPR = (fundingRate * 365).toFixed(2);
 
   return (
@@ -107,7 +176,6 @@ export const TradeView: React.FC<TradeViewProps> = ({
           <div className="px-4 py-3 flex justify-between items-center">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 flex items-center justify-center">
-                  {/* Custom Gold Icon */}
                   <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <circle cx="16" cy="16" r="15" fill="url(#gold_gradient)" stroke="#EAB308" strokeWidth="2"/>
                     <path d="M16 26C21.5228 26 26 21.5228 26 16C26 10.4772 21.5228 6 16 6C10.4772 6 6 10.4772 6 16C6 21.5228 10.4772 26 16 26Z" fill="#F59E0B" fillOpacity="0.2"/>
@@ -171,13 +239,13 @@ export const TradeView: React.FC<TradeViewProps> = ({
 
       {/* Chart */}
       <div className="relative border-b dark:border-slate-800 border-slate-200 dark:bg-slate-900 bg-white min-h-[290px]">
-        {/* Timeframe Selector */}
-        <div className="flex items-center gap-1 overflow-x-auto no-scrollbar px-2 py-2 border-b dark:border-slate-800 border-slate-100">
+        {/* Timeframe Selector (Scrollable) */}
+        <div className="flex items-center gap-1 overflow-x-auto no-scrollbar px-2 py-2 border-b dark:border-slate-800 border-slate-100 touch-pan-x">
            {TIMEFRAMES.map((tf) => (
                <button
                   key={tf}
                   onClick={() => onTimeframeChange(tf)}
-                  className={`text-[10px] font-bold px-2 py-1 rounded-md whitespace-nowrap transition-colors ${timeframe === tf ? 'bg-indigo-500/10 text-indigo-500' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
+                  className={`text-[10px] font-bold px-2 py-1 rounded-md whitespace-nowrap transition-colors flex-shrink-0 ${timeframe === tf ? 'bg-indigo-500/10 text-indigo-500' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
                >
                    {tf}
                </button>
@@ -212,193 +280,310 @@ export const TradeView: React.FC<TradeViewProps> = ({
         </div>
       </div>
 
-      {/* Book / Trades Tab */}
-      <div className="flex border-b dark:border-slate-800 border-slate-200 dark:bg-slate-900 bg-white">
-         <button 
-            onClick={() => setActiveBookTab('book')}
-            className={`flex-1 py-3 text-xs font-bold transition-colors border-b-2 ${activeBookTab === 'book' ? 'border-indigo-500 text-indigo-500' : 'border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
-         >
-            {t.tabOrderBook}
-         </button>
-         <button 
-            onClick={() => setActiveBookTab('trades')}
-            className={`flex-1 py-3 text-xs font-bold transition-colors border-b-2 ${activeBookTab === 'trades' ? 'border-indigo-500 text-indigo-500' : 'border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
-         >
-            {t.tabRecentTrades}
-         </button>
-      </div>
-
-      {/* Book / Trades Content */}
-      <div className="dark:bg-slate-900 bg-white min-h-[130px]">
-        {activeBookTab === 'book' ? (
-           <OrderBook currentPrice={currentPrice} />
-        ) : (
-           <div className="p-3 border-b dark:border-slate-800 border-slate-200">
-              <div className="grid grid-cols-3 text-[10px] dark:text-slate-500 text-slate-400 mb-2 uppercase tracking-wider">
-                  <span>{t.price}</span>
-                  <span className="text-center">{t.qty}</span>
-                  <span className="text-right">{t.time}</span>
-              </div>
-              <div className="space-y-1">
-                  {marketTrades.slice(0, 6).map((trade) => (
-                      <div key={trade.id} className="grid grid-cols-3 text-[10px] font-mono animate-in fade-in slide-in-from-top-1 duration-300">
-                          <span className={trade.side === Side.LONG ? 'text-emerald-500' : 'text-rose-500'}>
-                              {trade.price.toFixed(2)}
-                          </span>
-                          <span className="text-center dark:text-slate-300 text-slate-700">
-                              {trade.size.toFixed(4)}
-                          </span>
-                          <span className="text-right dark:text-slate-400 text-slate-500">
-                              {trade.time}
-                          </span>
-                      </div>
-                  ))}
-              </div>
-           </div>
-        )}
-      </div>
-
-      {/* Order Controls */}
-      <div className="p-4 space-y-4 dark:bg-slate-900 bg-slate-50">
-        
-        {/* Margin Mode & Order Type Row */}
-        <div className="flex gap-2">
-            <div className="relative">
-                <select 
-                    value={marginMode}
-                    onChange={(e) => setMarginMode(e.target.value as MarginMode)}
-                    className="appearance-none dark:bg-slate-800 bg-white text-xs font-bold dark:text-white text-slate-900 py-2 pl-3 pr-8 rounded-lg border dark:border-slate-700 border-slate-200 focus:outline-none focus:border-indigo-500 h-full shadow-sm"
-                >
-                    <option value={MarginMode.CROSS}>{t.cross}</option>
-                    <option value={MarginMode.ISOLATED}>{t.isolated}</option>
-                </select>
-                <Settings2 size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-            </div>
-
-            <div className="flex-1 flex dark:bg-slate-800 bg-slate-200 rounded-lg p-1">
-                <button 
-                    onClick={() => setOrderType('MARKET')}
-                    className={`flex-1 py-1 text-xs font-bold rounded transition-all ${orderType === 'MARKET' ? 'dark:bg-slate-600 bg-white dark:text-white text-slate-900 shadow' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
-                >
-                    {t.market}
-                </button>
-                <button 
-                    onClick={() => {
-                        setOrderType('LIMIT');
-                        setLimitPrice(currentPrice.toFixed(2));
-                    }}
-                    className={`flex-1 py-1 text-xs font-bold rounded transition-all ${orderType === 'LIMIT' ? 'dark:bg-slate-600 bg-white dark:text-white text-slate-900 shadow' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
-                >
-                    {t.limit}
-                </button>
-            </div>
-        </div>
-
-        {/* Leverage Slider */}
-        <div className="dark:bg-slate-800/50 bg-white p-3 rounded-xl border dark:border-slate-800 border-slate-200 shadow-sm">
-          <div className="flex justify-between text-xs text-slate-400 mb-2">
-            <span>{t.leverage}</span>
-            <span className="dark:text-white text-slate-900 font-mono">{leverage}x</span>
-          </div>
-          <input 
-            type="range" 
-            min="1" 
-            max="100" 
-            step="1" 
-            value={leverage} 
-            onChange={(e) => setLeverage(parseInt(e.target.value))}
-            className="w-full h-1 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500"
-          />
-          <div className="flex justify-between text-[10px] text-slate-500 mt-1 font-mono">
-            <span>1x</span>
-            <span>20x</span>
-            <span>50x</span>
-            <span>100x</span>
-          </div>
-        </div>
-
-        {/* Inputs */}
-        <div className="grid grid-cols-2 gap-4">
+      {/* Main Trade Area: Split View (OrderBook Left, Form Right) */}
+      <div className="flex flex-1 min-h-[420px] dark:bg-slate-900 bg-white">
           
-          {/* Price Input (Only for Limit) */}
-          {orderType === 'LIMIT' && (
-            <div className="col-span-2">
-              <div className="relative group">
-                  <label className="absolute -top-2 left-2 dark:bg-slate-900 bg-slate-50 px-1 text-[10px] text-slate-400 group-focus-within:text-indigo-500 transition-colors">{t.price} (USDC)</label>
-                  <input 
-                    type="number" 
-                    value={limitPrice}
-                    onChange={(e) => setLimitPrice(e.target.value)}
-                    className="w-full dark:bg-slate-900 bg-slate-50 border dark:border-slate-700 border-slate-200 rounded-lg py-3 px-4 dark:text-white text-slate-900 font-mono focus:outline-none focus:border-indigo-500 transition-colors"
-                  />
+          {/* Left Column: Order Book & Recent Trades Tab */}
+          <div className="w-[42%] border-r dark:border-slate-800 border-slate-200 flex flex-col">
+             {/* Book / Trades Tabs */}
+             <div className="flex border-b dark:border-slate-800 border-slate-200">
+                <button 
+                    onClick={() => setActiveBookTab('book')}
+                    className={`flex-1 py-2 text-[10px] font-bold transition-colors border-b-2 ${activeBookTab === 'book' ? 'border-indigo-500 text-indigo-500' : 'border-transparent text-slate-400'}`}
+                >
+                    {t.tabOrderBook}
+                </button>
+                <button 
+                    onClick={() => setActiveBookTab('trades')}
+                    className={`flex-1 py-2 text-[10px] font-bold transition-colors border-b-2 ${activeBookTab === 'trades' ? 'border-indigo-500 text-indigo-500' : 'border-transparent text-slate-400'}`}
+                >
+                    {t.tabRecentTrades}
+                </button>
+             </div>
+
+             {/* Content */}
+             <div className="flex-1 overflow-hidden p-1">
+                {activeBookTab === 'book' ? (
+                   <OrderBook 
+                        currentPrice={currentPrice} 
+                        onPriceSelect={(p) => {
+                            setOrderType('LIMIT');
+                            setLimitPrice(p);
+                        }}
+                   />
+                ) : (
+                   <div className="h-full overflow-y-auto no-scrollbar">
+                      <div className="grid grid-cols-2 text-[9px] dark:text-slate-500 text-slate-400 mb-1 px-1">
+                          <span>{t.price}</span>
+                          <span className="text-right">{t.qty}</span>
+                      </div>
+                      <div className="space-y-0.5">
+                          {marketTrades.map((trade) => (
+                              <div key={trade.id} className="grid grid-cols-2 text-[9px] font-mono animate-in fade-in slide-in-from-top-1 duration-300 px-1 py-0.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded">
+                                  <span className={trade.side === Side.LONG ? 'text-emerald-500' : 'text-rose-500'}>
+                                      {trade.price.toFixed(2)}
+                                  </span>
+                                  <span className="text-right dark:text-slate-300 text-slate-700">
+                                      {trade.size.toFixed(4)}
+                                  </span>
+                              </div>
+                          ))}
+                      </div>
+                   </div>
+                )}
+             </div>
+          </div>
+
+          {/* Right Column: Order Form */}
+          <div className="w-[58%] p-3 flex flex-col">
+              
+              {/* Top Controls: Margin & Leverage */}
+              <div className="flex gap-2 mb-3">
+                 {/* Margin Mode Switch */}
+                 <div className="flex-1 bg-slate-100 dark:bg-slate-800 rounded-md p-0.5 flex">
+                    <button 
+                        onClick={() => setMarginMode(MarginMode.CROSS)}
+                        className={`flex-1 text-[10px] font-bold rounded py-1.5 transition-all ${marginMode === MarginMode.CROSS ? 'bg-white dark:bg-slate-600 shadow text-indigo-500' : 'text-slate-400'}`}
+                    >
+                        {t.cross}
+                    </button>
+                    <button 
+                        onClick={() => setMarginMode(MarginMode.ISOLATED)}
+                        className={`flex-1 text-[10px] font-bold rounded py-1.5 transition-all ${marginMode === MarginMode.ISOLATED ? 'bg-white dark:bg-slate-600 shadow text-indigo-500' : 'text-slate-400'}`}
+                    >
+                        {t.isolated}
+                    </button>
+                 </div>
+                 
+                 <div className="relative flex-1">
+                     <button 
+                        onClick={() => {
+                            setTempLeverage(leverage);
+                            setShowLeverageModal(true);
+                        }}
+                        className="w-full bg-slate-100 dark:bg-slate-800 border dark:border-slate-700 border-slate-200 rounded-md py-2 px-2 text-[10px] font-bold text-center dark:text-white text-slate-900 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors flex items-center justify-center gap-1"
+                     >
+                         {leverage}x
+                         <Edit2 size={8} className="opacity-50" />
+                     </button>
+                 </div>
               </div>
-            </div>
-          )}
 
-          {/* Amount Input */}
-          <div className="col-span-2">
-             <div className="relative group">
-                <label className="absolute -top-2 left-2 dark:bg-slate-900 bg-slate-50 px-1 text-[10px] text-slate-400 group-focus-within:text-indigo-500 transition-colors">{t.size} (XAU)</label>
-                <input 
-                  type="number" 
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  className="w-full dark:bg-slate-900 bg-slate-50 border dark:border-slate-700 border-slate-200 rounded-lg py-3 px-4 dark:text-white text-slate-900 font-mono focus:outline-none focus:border-indigo-500 transition-colors"
-                />
-                <span className="absolute right-4 top-3.5 text-xs text-slate-500 font-mono">
-                  ≈ ${(parseFloat(amount || '0') * executionPrice).toLocaleString()}
-                </span>
-             </div>
-             <div className="flex justify-between text-[10px] text-slate-500 mt-1 px-1">
-               <span>Max: {maxBuy.toFixed(2)} XAU</span>
-               <span>{t.avail}: ${balance.toFixed(2)}</span>
-             </div>
-          </div>
-        </div>
+              {/* Order Type Toggle (Market First) */}
+              <div className="flex dark:bg-slate-800 bg-slate-100 rounded-lg p-0.5 mb-3">
+                 <button 
+                    onClick={() => setOrderType('MARKET')}
+                    className={`flex-1 py-1 text-[10px] font-bold rounded-md transition-all ${orderType === 'MARKET' ? 'dark:bg-slate-600 bg-white dark:text-white text-slate-900 shadow' : 'text-slate-500'}`}
+                 >
+                    {t.market}
+                 </button>
+                 <button 
+                    onClick={() => setOrderType('LIMIT')}
+                    className={`flex-1 py-1 text-[10px] font-bold rounded-md transition-all ${orderType === 'LIMIT' ? 'dark:bg-slate-600 bg-white dark:text-white text-slate-900 shadow' : 'text-slate-500'}`}
+                 >
+                    {t.limit}
+                 </button>
+              </div>
 
-        {/* Buttons */}
-        <div className="grid grid-cols-2 gap-3 mt-4">
-          <button 
-            onClick={() => handleTrade(Side.LONG)}
-            className="flex flex-col items-center justify-center py-3 rounded-lg bg-emerald-600 active:bg-emerald-700 text-white shadow-lg shadow-emerald-900/20 transition-transform active:scale-95"
-          >
-            <span className="font-bold text-sm">{t.long}</span>
-            <span className="text-[10px] opacity-80 font-mono">
-               {orderType === 'LIMIT' ? `@ ${parseFloat(limitPrice).toFixed(2)}` : t.market}
-            </span>
-          </button>
-          <button 
-            onClick={() => handleTrade(Side.SHORT)}
-            className="flex flex-col items-center justify-center py-3 rounded-lg bg-rose-600 active:bg-rose-700 text-white shadow-lg shadow-rose-900/20 transition-transform active:scale-95"
-          >
-            <span className="font-bold text-sm">{t.short}</span>
-            <span className="text-[10px] opacity-80 font-mono">
-               {orderType === 'LIMIT' ? `@ ${parseFloat(limitPrice).toFixed(2)}` : t.market}
-            </span>
-          </button>
-        </div>
+              {/* Price Input */}
+              <div className="mb-3">
+                 <div className="flex justify-between mb-1">
+                    <label className="text-[10px] text-slate-500">{t.price}</label>
+                 </div>
+                 <div className="relative">
+                     <input 
+                       type="text"
+                       value={orderType === 'MARKET' ? `${t.market} ${t.price}` : limitPrice}
+                       onChange={(e) => setLimitPrice(e.target.value)}
+                       disabled={orderType === 'MARKET'}
+                       placeholder={orderType === 'MARKET' ? `${t.market} ${t.price}` : '0.00'}
+                       className={`w-full dark:bg-slate-800 bg-slate-50 border dark:border-slate-700 border-slate-200 rounded-lg py-2.5 px-3 text-sm font-mono focus:outline-none focus:border-indigo-500 ${orderType === 'MARKET' ? 'text-slate-400 italic cursor-not-allowed' : 'dark:text-white text-slate-900'}`}
+                     />
+                     {orderType === 'LIMIT' && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-500">USDC</span>}
+                 </div>
+              </div>
 
-        {/* Info */}
-        <div className="dark:bg-slate-800/30 bg-white/50 rounded-lg p-3 text-xs space-y-2 border dark:border-slate-800/50 border-slate-200">
-          <div className="flex justify-between">
-             <span className="text-slate-500">{t.mode}</span>
-             <span className="text-indigo-500 font-mono font-bold uppercase">{marginMode}</span>
-          </div>
-          <div className="flex justify-between">
-             <span className="text-slate-500">{t.liqPrice} (Est)</span>
-             <span className="text-orange-500 font-mono">
-               {amount ? (parseFloat(amount) > 0 ? (executionPrice * (1 - 1/leverage)).toFixed(2) : '--') : '--'}
-             </span>
-          </div>
-          <div className="flex justify-between">
-             <span className="text-slate-500">{t.marginRequired}</span>
-             <span className="dark:text-slate-200 text-slate-800 font-mono">
-                ${amount ? ((parseFloat(amount) * executionPrice) / leverage).toFixed(2) : '0.00'}
-             </span>
-          </div>
-        </div>
+              {/* Size Input with Unit Selector */}
+              <div className="mb-6">
+                 <div className="flex justify-between mb-1">
+                    <label className="text-[10px] text-slate-500">{t.size}</label>
+                    <span className="text-[10px] text-slate-500">{t.avail}: <span className="dark:text-white text-slate-900 font-mono">{balance.toFixed(2)}</span> USDC</span>
+                 </div>
+                 <div className="relative">
+                     <input 
+                       type="number"
+                       value={amount}
+                       onChange={handleAmountChange}
+                       placeholder="Amount"
+                       className="w-full dark:bg-slate-800 bg-slate-50 border dark:border-slate-700 border-slate-200 rounded-lg py-2.5 pl-3 pr-20 text-sm font-mono dark:text-white text-slate-900 focus:outline-none focus:border-indigo-500"
+                     />
+                     <div className="absolute right-0 top-0 bottom-0 flex items-center pr-2">
+                         <div className="relative bg-slate-100 dark:bg-slate-700 rounded-md">
+                            <select 
+                                value={sizeUnit}
+                                onChange={handleUnitChange}
+                                className="appearance-none bg-transparent border-none text-[10px] font-bold py-1.5 pl-2 pr-6 rounded-md focus:ring-0 cursor-pointer dark:text-white text-slate-900"
+                            >
+                                <option value="XAU">XAU</option>
+                                <option value="USDC">USDC</option>
+                            </select>
+                            <ChevronDown size={10} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
+                         </div>
+                     </div>
+                 </div>
+              </div>
 
+              {/* Circular Percentage Slider */}
+              <div className="mb-4 px-2 relative h-10 flex items-center">
+                 {/* Track */}
+                 <div className="absolute inset-x-0 h-1 bg-slate-200 dark:bg-slate-700 rounded-lg">
+                    <div 
+                        className="h-full bg-indigo-500 rounded-l-lg" 
+                        style={{ width: `${sizeSliderValue}%` }}
+                    />
+                 </div>
+                 
+                 {/* Input Range (Invisible but clickable) */}
+                 <input 
+                    type="range" 
+                    min="0" 
+                    max="100" 
+                    step="1" 
+                    value={sizeSliderValue}
+                    onChange={handleSizeSliderChange}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
+                 />
+                 
+                 {/* Custom Circular Thumb */}
+                 <div 
+                    className="absolute h-8 w-8 bg-white dark:bg-slate-800 border-2 border-indigo-500 shadow-md rounded-full flex items-center justify-center z-10 pointer-events-none transition-transform"
+                    style={{ left: `${sizeSliderValue}%`, transform: 'translateX(-50%)' }}
+                 >
+                    <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 font-mono">{Math.round(sizeSliderValue)}%</span>
+                 </div>
+              </div>
+              
+              <div className="flex justify-between text-[9px] text-slate-400 mb-4 font-mono px-1">
+                    <span>0%</span>
+                    <span>25%</span>
+                    <span>50%</span>
+                    <span>75%</span>
+                    <span>100%</span>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-2">
+                  <button 
+                    onClick={() => handleTrade(Side.LONG)}
+                    className="flex-1 py-3 rounded-lg bg-emerald-600 active:bg-emerald-700 text-white shadow-lg shadow-emerald-900/10 transition-transform active:scale-95 flex flex-col items-center justify-center"
+                  >
+                    <span className="font-bold text-sm">{t.long.split('/')[1] || 'Long'}</span>
+                  </button>
+                  <button 
+                    onClick={() => handleTrade(Side.SHORT)}
+                    className="flex-1 py-3 rounded-lg bg-rose-600 active:bg-rose-700 text-white shadow-lg shadow-rose-900/10 transition-transform active:scale-95 flex flex-col items-center justify-center"
+                  >
+                    <span className="font-bold text-sm">{t.short.split('/')[1] || 'Short'}</span>
+                  </button>
+              </div>
+
+              {/* Detailed Stats below buttons */}
+              <div className="mt-4 grid grid-cols-2 gap-4">
+                  {/* Long Stats */}
+                  <div className="space-y-1.5">
+                     <div className="flex justify-between text-[10px]">
+                        <span className="text-slate-500">{t.estLiqPrice}</span>
+                        <span className="font-mono text-orange-500">{longLiqPrice.toFixed(2)}</span>
+                     </div>
+                     <div className="flex justify-between text-[10px]">
+                        <span className="text-slate-500">{t.margin}</span>
+                        <span className="font-mono dark:text-slate-300 text-slate-700">{marginRequired.toFixed(1)}</span>
+                     </div>
+                     <div className="flex justify-between text-[10px]">
+                        <span className="text-slate-500">{t.max}</span>
+                        <span className="font-mono dark:text-slate-300 text-slate-700">{maxBuyXAU.toFixed(2)}</span>
+                     </div>
+                  </div>
+
+                  {/* Short Stats */}
+                  <div className="space-y-1.5 border-l dark:border-slate-800 pl-3">
+                     <div className="flex justify-between text-[10px]">
+                        <span className="text-slate-500">{t.estLiqPrice}</span>
+                        <span className="font-mono text-orange-500">{shortLiqPrice.toFixed(2)}</span>
+                     </div>
+                     <div className="flex justify-between text-[10px]">
+                        <span className="text-slate-500">{t.margin}</span>
+                        <span className="font-mono dark:text-slate-300 text-slate-700">{marginRequired.toFixed(1)}</span>
+                     </div>
+                     <div className="flex justify-between text-[10px]">
+                        <span className="text-slate-500">{t.max}</span>
+                        <span className="font-mono dark:text-slate-300 text-slate-700">{maxBuyXAU.toFixed(2)}</span>
+                     </div>
+                  </div>
+              </div>
+
+          </div>
       </div>
+
+      {/* Leverage Adjustment Modal */}
+      {showLeverageModal && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in">
+             <div className="bg-white dark:bg-slate-800 rounded-xl w-full max-w-sm p-6 shadow-2xl animate-in zoom-in-95 duration-200">
+                 <div className="flex justify-between items-center mb-6">
+                     <h3 className="text-lg font-bold dark:text-white text-slate-900">{t.leverage}</h3>
+                     <button onClick={() => setShowLeverageModal(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-white"><X size={20}/></button>
+                 </div>
+                 
+                 <div className="mb-8 text-center">
+                    <div className="text-4xl font-mono font-bold text-indigo-500 mb-2">{tempLeverage}x</div>
+                    <div className="text-xs text-slate-500">Max Position: ${(balance * tempLeverage).toLocaleString()}</div>
+                 </div>
+
+                 <div className="mb-6 px-2">
+                    <input 
+                        type="range" 
+                        min="1" 
+                        max="100" 
+                        step="1" 
+                        value={tempLeverage} 
+                        onChange={(e) => setTempLeverage(parseInt(e.target.value))}
+                        className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                    />
+                    <div className="flex justify-between text-xs text-slate-400 mt-2 font-mono">
+                        <span>1x</span>
+                        <span>25x</span>
+                        <span>50x</span>
+                        <span>75x</span>
+                        <span>100x</span>
+                    </div>
+                 </div>
+
+                 <div className="grid grid-cols-2 gap-3">
+                    <button onClick={() => setShowLeverageModal(false)} className="py-3 rounded-xl border border-slate-200 dark:border-slate-700 font-bold text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700">
+                        {t.cancel}
+                    </button>
+                    <button 
+                        onClick={() => {
+                            setLeverage(tempLeverage);
+                            setShowLeverageModal(false);
+                            // Recalculate slider based on new leverage if amount exists
+                            // Or just reset amount to avoid issues
+                            // For UX, often better to keep amount but it might exceed limits. 
+                            // Let's keep amount but update slider visual
+                            if (amount && parseFloat(amount) > 0) {
+                                const newMax = (balance * tempLeverage) / executionPrice;
+                                const newPct = Math.min(100, (parseFloat(amount) / newMax) * 100);
+                                setSizeSliderValue(newPct);
+                            }
+                        }}
+                        className="py-3 rounded-xl bg-indigo-600 text-white font-bold shadow-lg shadow-indigo-500/20 hover:bg-indigo-500"
+                    >
+                        {t.confirmAction}
+                    </button>
+                </div>
+             </div>
+        </div>
+      )}
 
       {/* Funding Modal */}
       {showFundingModal && (

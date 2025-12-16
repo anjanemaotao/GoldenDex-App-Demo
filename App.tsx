@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Tab, Side, Position, Order, Candle, TradeRecord, TransferRecord, MarginMode, Language, Theme, FundingRecord, MarketTrade, Timeframe } from './types';
+import { Tab, Side, Position, Order, Candle, FillRecord, TransferRecord, MarginMode, Language, Theme, CashFlowRecord, MarketTrade, Timeframe, PositionMode } from './types';
 import { generateInitialData, INITIAL_BALANCE, SYMBOL, TRANSLATIONS } from './constants';
 import { BottomNav } from './components/BottomNav';
 import { TradeView } from './components/TradeView';
 import { PositionsView } from './components/PositionsView';
 import { OrdersView } from './components/OrdersView';
 import { AccountView } from './components/AccountView';
-import { CheckCircle } from 'lucide-react';
+import { CheckCircle, AlertTriangle } from 'lucide-react';
 
-const Toast = ({ message, visible }: { message: string, visible: boolean }) => (
-  <div className={`fixed top-4 left-1/2 -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-full shadow-lg border border-slate-700 z-50 transition-all duration-300 flex items-center gap-2 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4 pointer-events-none'}`}>
-    <CheckCircle size={18} className="text-emerald-500" />
+const Toast = ({ message, visible, type = 'success' }: { message: string, visible: boolean, type?: 'success' | 'error' }) => (
+  <div className={`fixed top-4 left-1/2 -translate-x-1/2 px-6 py-3 rounded-full shadow-lg border z-50 transition-all duration-300 flex items-center gap-2 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4 pointer-events-none'} ${type === 'error' ? 'bg-rose-900/90 border-rose-700 text-white' : 'bg-slate-800 border-slate-700 text-white'}`}>
+    {type === 'error' ? <AlertTriangle size={18} className="text-white" /> : <CheckCircle size={18} className="text-emerald-500" />}
     <span className="text-sm font-medium">{message}</span>
   </div>
 );
@@ -22,6 +22,7 @@ const App: React.FC = () => {
   const [language, setLanguage] = useState<Language>('en');
   const [theme, setTheme] = useState<Theme>('dark');
   const [timeframe, setTimeframe] = useState<Timeframe>('15m');
+  const [positionMode, setPositionMode] = useState<PositionMode>(PositionMode.ONE_WAY);
 
   // Auth State
   const [isWalletConnected, setIsWalletConnected] = useState<boolean>(false);
@@ -38,16 +39,16 @@ const App: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   
   // History State
-  const [tradeHistory, setTradeHistory] = useState<TradeRecord[]>([]);
+  const [fillHistory, setFillHistory] = useState<FillRecord[]>([]); // Trade Execution History
   const [transferHistory, setTransferHistory] = useState<TransferRecord[]>([]);
-  const [fundingHistory, setFundingHistory] = useState<FundingRecord[]>([]);
+  const [cashFlowHistory, setCashFlowHistory] = useState<CashFlowRecord[]>([]);
   const [orderHistory, setOrderHistory] = useState<Order[]>([]);
 
   // Toast State
-  const [toast, setToast] = useState<{ message: string, visible: boolean }>({ message: '', visible: false });
+  const [toast, setToast] = useState<{ message: string, visible: boolean, type?: 'success' | 'error' }>({ message: '', visible: false, type: 'success' });
 
-  const showToast = (message: string) => {
-    setToast({ message, visible: true });
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ message, visible: true, type });
     setTimeout(() => {
         setToast(prev => ({ ...prev, visible: false }));
     }, 3000);
@@ -62,19 +63,49 @@ const App: React.FC = () => {
 
   // Initial Mock Data
   useEffect(() => {
-    // Generate some funding history
-    const mockFunding: FundingRecord[] = [];
+    // Generate some diverse cash flow history
+    const mockCashFlow: CashFlowRecord[] = [];
     const now = Date.now();
-    for(let i=1; i<=15; i++) {
-        mockFunding.push({
+    
+    // 1. Funding Fees
+    for(let i=1; i<=10; i++) {
+        mockCashFlow.push({
             id: `funding-${i}`,
+            type: 'FUNDING_FEE',
             symbol: SYMBOL,
-            rate: 0.0001 + (Math.random() * 0.00005),
-            amount: - (Math.random() * 2).toFixed(4) as unknown as number,
-            timestamp: now - (i * 3600 * 1000) // 1 hour intervals
+            amount: (Math.random() > 0.5 ? 1 : -1) * (Math.random() * 2),
+            timestamp: now - (i * 3600 * 1000)
         });
     }
-    setFundingHistory(mockFunding);
+
+    // 2. Transaction Fees & PnL
+    setCashFlowHistory(mockCashFlow.sort((a, b) => b.timestamp - a.timestamp));
+
+    // Generate Trade Execution History (Fills)
+    const mockFills: FillRecord[] = [];
+    for(let i=0; i<15; i++) {
+        const isBuy = Math.random() > 0.5;
+        const price = 2020 + Math.random() * 30;
+        const size = parseFloat((Math.random() * 0.5 + 0.01).toFixed(3));
+        const val = price * size;
+        const fee = val * 0.001; // 0.1%
+        const isClose = Math.random() > 0.7; // Some are closing trades
+        const pnl = isClose ? (Math.random() * 50 - 20) : 0;
+        
+        mockFills.push({
+            id: `fill-${i}`,
+            symbol: SYMBOL,
+            side: isBuy ? Side.LONG : Side.SHORT,
+            price: price,
+            size: size,
+            value: val,
+            fee: -fee,
+            realizedPnl: pnl,
+            timestamp: now - (i * 10000 * 1000)
+        });
+    }
+    setFillHistory(mockFills.sort((a, b) => b.timestamp - a.timestamp));
+
   }, []);
 
   // Apply Theme
@@ -97,10 +128,7 @@ const App: React.FC = () => {
       setCandles(prevCandles => {
         const lastCandle = prevCandles[prevCandles.length - 1];
         
-        // Adjust volatility for visual effect based on timeframe, 
-        // though strictly real price moves independently of timeframe chart.
-        // For simplicity in this mock, we just wiggle the last candle.
-        
+        // Adjust volatility for visual effect based on timeframe
         const volatility = 0.8; 
         const move = (Math.random() - 0.5) * volatility;
         newPrice = Math.max(0.01, lastCandle.close + move);
@@ -132,14 +160,15 @@ const App: React.FC = () => {
 
       // Randomly generate funding fee (Mock)
       if (Math.random() > 0.999) { // Rare event for demo
-        setFundingHistory(prev => [{
+        const feeAmount = -0.5;
+        setCashFlowHistory(prev => [{
             id: Date.now().toString(),
+            type: 'FUNDING_FEE',
             symbol: SYMBOL,
-            rate: 0.0001,
-            amount: -0.5, // Mock deduction
+            amount: feeAmount,
             timestamp: Date.now()
         }, ...prev]);
-        setBalance(prev => prev - 0.5);
+        setBalance(prev => prev + feeAmount);
       }
 
       // 2. Check Limit Orders for Execution
@@ -178,13 +207,34 @@ const App: React.FC = () => {
               isolatedMargin: order.marginMode === MarginMode.ISOLATED ? initialMargin : undefined
             };
             
-            // NOTE: We're doing side effects in setState, ideally should use a ref or separate mechanism, 
-            // but for this simple simulation it works to keep state matching.
             setPositions(prev => [newPosition, ...prev]);
             
-            // Add to history
+            // Add to Order history
             const filledOrder: Order = { ...order, filled: order.amount, status: 'FILLED' };
             setOrderHistory(prev => [filledOrder, ...prev]);
+
+            // Add Transaction Fee
+            const fee = -(order.amount * order.price * 0.001);
+            setCashFlowHistory(prev => [{
+                id: `fee-${Date.now()}`,
+                type: 'TRANSACTION_FEE',
+                symbol: SYMBOL,
+                amount: fee,
+                timestamp: Date.now()
+            }, ...prev]);
+            
+            // Add Fill Record
+            setFillHistory(prev => [{
+                id: `fill-${Date.now()}`,
+                symbol: SYMBOL,
+                side: order.side,
+                price: order.price,
+                size: order.amount,
+                value: order.amount * order.price,
+                fee: fee,
+                realizedPnl: 0, // Opening trade
+                timestamp: Date.now()
+            }, ...prev]);
 
             console.log(`Order ${order.id} executed at ${newPrice}`);
           } else {
@@ -199,6 +249,17 @@ const App: React.FC = () => {
 
     return () => clearInterval(interval);
   }, [currentPrice]); 
+
+  // Handle Position Mode Change
+  const handleSetPositionMode = (mode: PositionMode) => {
+      // Check if there are active positions or open orders
+      if (positions.length > 0 || orders.length > 0) {
+          showToast(TRANSLATIONS[language].positionModeError, 'error');
+          return;
+      }
+      setPositionMode(mode);
+      showToast(TRANSLATIONS[language].notifications.positionModeUpdated, 'success');
+  };
 
   // Trading Logic
   const handlePlaceOrder = (side: Side, size: number, price: number, type: 'MARKET' | 'LIMIT', marginMode: MarginMode) => {
@@ -231,6 +292,31 @@ const App: React.FC = () => {
         isolatedMargin: marginMode === MarginMode.ISOLATED ? requiredMargin : undefined
       };
       setPositions(prev => [newPosition, ...prev]);
+      
+      const fee = -(size * price * 0.001);
+
+      // Add Transaction Fee for market order
+      setCashFlowHistory(prev => [{
+          id: `fee-${Date.now()}`,
+          type: 'TRANSACTION_FEE',
+          symbol: SYMBOL,
+          amount: fee,
+          timestamp: Date.now()
+      }, ...prev]);
+
+      // Add Fill Record
+      setFillHistory(prev => [{
+        id: `fill-${Date.now()}`,
+        symbol: SYMBOL,
+        side: side,
+        price: price,
+        size: size,
+        value: size * price,
+        fee: fee,
+        realizedPnl: 0, // Opening trade
+        timestamp: Date.now()
+      }, ...prev]);
+
       showToast(TRANSLATIONS[language].notifications.orderPlaced);
     } else {
       const newOrder: Order = {
@@ -268,17 +354,37 @@ const App: React.FC = () => {
     
     setBalance(prev => prev + marginToReturn + pnl);
     
-    const record: TradeRecord = {
-      id: position.id,
-      symbol: position.symbol,
-      side: position.side,
-      size: position.size,
-      entryPrice: position.entryPrice,
-      closePrice: currentPrice,
-      pnl: pnl,
-      timestamp: Date.now()
-    };
-    setTradeHistory(prev => [record, ...prev]);
+    // Add Fill Record (Closing)
+    const fee = -(currentPrice * position.size * 0.001);
+    setFillHistory(prev => [{
+        id: `fill-close-${position.id}`,
+        symbol: position.symbol,
+        side: position.side === Side.LONG ? Side.SHORT : Side.LONG, // Closing side is opposite
+        price: currentPrice,
+        size: position.size,
+        value: currentPrice * position.size,
+        fee: fee,
+        realizedPnl: pnl,
+        timestamp: Date.now()
+    }, ...prev]);
+
+    // Record Realized PnL to Cash Flow
+    setCashFlowHistory(prev => [{
+        id: `pnl-${Date.now()}`,
+        type: 'REALIZED_PNL',
+        symbol: position.symbol,
+        amount: pnl,
+        timestamp: Date.now()
+    }, ...prev]);
+    
+    // Record Closing Fee
+    setCashFlowHistory(prev => [{
+        id: `fee-${Date.now()}`,
+        type: 'TRANSACTION_FEE',
+        symbol: position.symbol,
+        amount: fee,
+        timestamp: Date.now()
+    }, ...prev]);
 
     setPositions(prev => prev.filter(p => p.id !== id));
     showToast(TRANSLATIONS[language].notifications.positionClosed);
@@ -288,7 +394,8 @@ const App: React.FC = () => {
     if (positions.length === 0) return;
     
     let totalCredit = 0;
-    const records: TradeRecord[] = [];
+    const cashFlows: CashFlowRecord[] = [];
+    const fills: FillRecord[] = [];
 
     positions.forEach(position => {
         const priceDiff = currentPrice - position.entryPrice;
@@ -302,21 +409,43 @@ const App: React.FC = () => {
         }
         
         totalCredit += (marginToReturn + pnl);
+        const fee = -(currentPrice * position.size * 0.001);
         
-        records.push({
-            id: position.id,
+        // Add Fill
+        fills.push({
+            id: `fill-close-all-${position.id}`,
             symbol: position.symbol,
-            side: position.side,
+            side: position.side === Side.LONG ? Side.SHORT : Side.LONG,
+            price: currentPrice,
             size: position.size,
-            entryPrice: position.entryPrice,
-            closePrice: currentPrice,
-            pnl: pnl,
+            value: currentPrice * position.size,
+            fee: fee,
+            realizedPnl: pnl,
             timestamp: Date.now()
+        });
+
+        // Add PnL to Cash Flow
+        cashFlows.push({
+             id: `pnl-${position.id}-${Date.now()}`,
+             type: 'REALIZED_PNL',
+             symbol: position.symbol,
+             amount: pnl,
+             timestamp: Date.now()
+        });
+        
+        // Add Fee to Cash Flow
+        cashFlows.push({
+             id: `fee-${position.id}-${Date.now()}`,
+             type: 'TRANSACTION_FEE',
+             symbol: position.symbol,
+             amount: fee,
+             timestamp: Date.now()
         });
     });
 
     setBalance(prev => prev + totalCredit);
-    setTradeHistory(prev => [...records, ...prev]);
+    setFillHistory(prev => [...fills, ...prev]);
+    setCashFlowHistory(prev => [...cashFlows, ...prev]);
     setPositions([]);
     showToast(TRANSLATIONS[language].notifications.positionsClosed);
   };
@@ -434,7 +563,7 @@ const App: React.FC = () => {
   return (
     <div className={`min-h-screen font-sans max-w-md mx-auto border-x shadow-2xl overflow-hidden relative ${theme === 'dark' ? 'bg-slate-900 border-slate-800 text-slate-100' : 'bg-slate-50 border-slate-200 text-slate-900'}`}>
       
-      <Toast message={toast.message} visible={toast.visible} />
+      <Toast message={toast.message} visible={toast.visible} type={toast.type} />
 
       {/* Main Content Area */}
       <main className="h-screen w-full">
@@ -479,9 +608,9 @@ const App: React.FC = () => {
             equity={equity}
             totalPositionValue={totalPositionValue}
             externalWalletBalance={externalWalletBalance}
-            tradeHistory={tradeHistory}
+            fillHistory={fillHistory}
             transferHistory={transferHistory}
-            fundingHistory={fundingHistory}
+            cashFlowHistory={cashFlowHistory}
             onDeposit={handleDeposit}
             onWithdraw={handleWithdraw}
             isConnected={isWalletConnected}
@@ -491,6 +620,8 @@ const App: React.FC = () => {
             setLanguage={setLanguage}
             theme={theme}
             setTheme={setTheme}
+            positionMode={positionMode}
+            onSetPositionMode={handleSetPositionMode}
           />
         )}
       </main>

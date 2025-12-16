@@ -76,7 +76,7 @@ export const TRANSLATIONS = {
     size: 'Size',
     avail: 'Avail',
     margin: 'Margin',
-    liqPrice: 'Liq. Price',
+    liqPrice: 'Liq Price',
     openPositions: 'Open Positions',
     noPositions: 'No active positions',
     closePos: 'Close Position',
@@ -88,9 +88,9 @@ export const TRANSLATIONS = {
     deposit: 'Deposit',
     withdraw: 'Withdraw',
     transfers: 'Transfers',
-    history: 'Transaction History',
+    history: 'Trade History',
     settings: 'Settings',
-    funding: 'Funding History',
+    funding: 'Cash Flow',
     language: 'Language',
     theme: 'Theme',
     light: 'Light',
@@ -100,7 +100,7 @@ export const TRANSLATIONS = {
     network: 'Network',
     address: 'Address',
     confirm: 'Confirm',
-    max: 'MAX',
+    max: 'Max',
     addMargin: 'Adjust Margin',
     add: 'Add',
     remove: 'Remove',
@@ -148,11 +148,31 @@ export const TRANSLATIONS = {
     after: 'After',
     currentMargin: 'Current Margin',
     afterMargin: 'After Margin',
-    estLiqPrice: 'Est. Liq Price',
+    estLiqPrice: 'Liq Price',
     maxRemove: 'Max Removable',
     change24h: '24h Chg',
     vol24h: '24h Vol',
     openInterest: 'Open Interest',
+    all: 'All',
+    positionMode: 'Position Mode',
+    oneWayMode: 'One-Way Mode',
+    hedgeMode: 'Hedge Mode',
+    positionModeError: 'U-margin contract holds positions, position mode adjustment not supported.',
+    tradeHistoryFields: {
+        pair: 'Pair',
+        side: 'Side',
+        price: 'Price',
+        qty: 'Qty',
+        fee: 'Fee',
+        realizedPnl: 'Realized PnL',
+        value: 'Value'
+    },
+    cashFlowTypes: {
+        TRANSACTION_FEE: 'Transaction Fee',
+        FUNDING_FEE: 'Funding Fee',
+        REALIZED_PNL: 'Realized PnL',
+        LIQUIDATION_FEE: 'Liquidation Fee'
+    },
     notifications: {
         orderPlaced: 'Order Placed Successfully',
         positionClosed: 'Position Closed Successfully',
@@ -164,7 +184,8 @@ export const TRANSLATIONS = {
         marginUpdated: 'Margin Updated Successfully',
         inputAmountReq: 'Please enter a valid amount',
         insufficientWallet: 'Insufficient wallet balance',
-        insufficientAvail: 'Insufficient available balance'
+        insufficientAvail: 'Insufficient available balance',
+        positionModeUpdated: 'Position Mode Updated'
     },
     fundingDetails: {
       title: 'Funding Rate Details',
@@ -206,7 +227,7 @@ export const TRANSLATIONS = {
     deposit: '充值',
     withdraw: '提现',
     transfers: '充提记录',
-    history: '交易历史',
+    history: '历史成交',
     settings: '设置',
     funding: '资金流水',
     language: '语言',
@@ -266,11 +287,31 @@ export const TRANSLATIONS = {
     after: '调整后',
     currentMargin: '当前保证金',
     afterMargin: '调整后保证金',
-    estLiqPrice: '预估强平价',
+    estLiqPrice: '强平价',
     maxRemove: '最大可提取',
     change24h: '24h 涨跌',
     vol24h: '24h 成交额',
     openInterest: '未平仓合约',
+    all: '全部',
+    positionMode: '持仓模式',
+    oneWayMode: '单向持仓',
+    hedgeMode: '双向持仓',
+    positionModeError: 'U本位合约存在持仓，不支持调整仓位模式。',
+    tradeHistoryFields: {
+        pair: '交易对',
+        side: '方向',
+        price: '成交价格',
+        qty: '成交数量',
+        fee: '交易费',
+        realizedPnl: '已实现盈亏',
+        value: '成交金额'
+    },
+    cashFlowTypes: {
+        TRANSACTION_FEE: '交易手续费',
+        FUNDING_FEE: '资金费',
+        REALIZED_PNL: '已实现盈亏',
+        LIQUIDATION_FEE: '清算费'
+    },
     notifications: {
         orderPlaced: '下单成功',
         positionClosed: '平倉成功',
@@ -282,7 +323,8 @@ export const TRANSLATIONS = {
         marginUpdated: '保证金调整成功',
         inputAmountReq: '请输入有效金额',
         insufficientWallet: '钱包余额不足',
-        insufficientAvail: '可提现余额不足'
+        insufficientAvail: '可提现余额不足',
+        positionModeUpdated: '持仓模式已更新'
     },
     fundingDetails: {
       title: '资金费率详情',
@@ -324,7 +366,7 @@ export const TRANSLATIONS = {
     deposit: '充值',
     withdraw: '提現',
     transfers: '充提記錄',
-    history: '交易歷史',
+    history: '歷史成交',
     settings: '設置',
     funding: '資金流水',
     language: '語言',
@@ -384,11 +426,31 @@ export const TRANSLATIONS = {
     after: '調整後',
     currentMargin: '當前保證金',
     afterMargin: '調整後保證金',
-    estLiqPrice: '預估強平價',
+    estLiqPrice: '強平價',
     maxRemove: '最大可提取',
     change24h: '24h 漲跌',
     vol24h: '24h 成交額',
-    openInterest: '未平倉合約',
+    openInterest: '未平仓合约',
+    all: '全部',
+    positionMode: '持倉模式',
+    oneWayMode: '單向持倉',
+    hedgeMode: '雙向持倉',
+    positionModeError: 'U本位合約存在持倉，不支持調整倉位模式。',
+    tradeHistoryFields: {
+        pair: '交易對',
+        side: '方向',
+        price: '成交價格',
+        qty: '成交數量',
+        fee: '交易費',
+        realizedPnl: '已實現盈虧',
+        value: '成交金額'
+    },
+    cashFlowTypes: {
+        TRANSACTION_FEE: '交易手續費',
+        FUNDING_FEE: '資金費',
+        REALIZED_PNL: '已實現盈虧',
+        LIQUIDATION_FEE: '清算費'
+    },
     notifications: {
         orderPlaced: '下單成功',
         positionClosed: '平倉成功',
@@ -400,7 +462,8 @@ export const TRANSLATIONS = {
         marginUpdated: '保證金調整成功',
         inputAmountReq: '請輸入有效金額',
         insufficientWallet: '錢包餘額不足',
-        insufficientAvail: '可提現餘額不足'
+        insufficientAvail: '可提現餘額不足',
+        positionModeUpdated: '持倉模式已更新'
     },
     fundingDetails: {
       title: '資金費率詳情',

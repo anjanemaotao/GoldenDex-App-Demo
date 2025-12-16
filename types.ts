@@ -16,6 +16,11 @@ export enum MarginMode {
   ISOLATED = 'ISOLATED'
 }
 
+export enum PositionMode {
+  ONE_WAY = 'ONE_WAY',
+  HEDGE = 'HEDGE'
+}
+
 export type Language = 'en' | 'zh-CN' | 'zh-TW';
 export type Theme = 'dark' | 'light';
 export type ChartType = 'line' | 'candle' | 'depth';
@@ -59,6 +64,7 @@ export interface Wallet {
   equity: number;
 }
 
+// Deprecated: Old TradeRecord, replaced by FillRecord for detailed history
 export interface TradeRecord {
   id: string;
   symbol: string;
@@ -70,6 +76,18 @@ export interface TradeRecord {
   timestamp: number;
 }
 
+export interface FillRecord {
+  id: string;
+  symbol: string;
+  side: Side;
+  price: number;
+  size: number;
+  value: number; // size * price
+  fee: number;
+  realizedPnl: number; // 0 for opening trades
+  timestamp: number;
+}
+
 export interface TransferRecord {
   id: string;
   type: 'DEPOSIT' | 'WITHDRAW';
@@ -78,10 +96,12 @@ export interface TransferRecord {
   status: 'COMPLETED' | 'PENDING';
 }
 
-export interface FundingRecord {
+export type CashFlowType = 'TRANSACTION_FEE' | 'FUNDING_FEE' | 'REALIZED_PNL' | 'LIQUIDATION_FEE';
+
+export interface CashFlowRecord {
   id: string;
+  type: CashFlowType;
   symbol: string;
-  rate: number;
   amount: number;
   timestamp: number;
 }
