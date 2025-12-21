@@ -1,6 +1,6 @@
-import { Candle, Language, Timeframe } from './types';
 
-// Helper to generate some realistic looking random walk data for Gold
+import { Candle, Language, Timeframe, MarketInfo } from './types';
+
 const startPrice = 2030.50;
 let currentPrice = startPrice;
 
@@ -28,35 +28,33 @@ export const generateInitialData = (count: number, timeframe: Timeframe = '15m')
 
   for (let i = count; i > 0; i--) {
     const time = new Date(now.getTime() - i * intervalMinutes * 60 * 1000); 
-    const move = (Math.random() - 0.5) * 2 * (intervalMinutes / 15); // Scale volatility by time
+    const move = (Math.random() - 0.5) * 2 * (intervalMinutes / 15);
     const open = currentPrice;
     const close = open + move;
     const high = Math.max(open, close) + Math.random() * 0.5 * (intervalMinutes / 15);
     const low = Math.min(open, close) - Math.random() * 0.5 * (intervalMinutes / 15);
-    
     currentPrice = close;
-    
     let timeStr = '';
-    // Format logic
     if (['1D', '3D', '1W', '1M'].includes(timeframe)) {
         timeStr = time.toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' });
     } else {
         timeStr = time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     }
-
-    data.push({
-      time: timeStr,
-      open,
-      high,
-      low,
-      close
-    });
+    data.push({ time: timeStr, open, high, low, close });
   }
   return data;
 };
 
-export const INITIAL_BALANCE = 10000.00; // Mock 10k USDC
-export const SYMBOL = "XAU/USDC";
+export const INITIAL_BALANCE = 10000.00;
+export const SYMBOL = "XAUUSDC";
+
+export const MOCK_MARKETS: MarketInfo[] = [
+  { symbol: 'XAUUSDC', name: 'Gold', lastPrice: 2023.91, change24h: 2.56, volume24h: 2950000, fundingRate: 0.0050, leverage: 20 },
+  { symbol: 'BTCUSDC', name: 'Bitcoin', lastPrice: 65482.12, change24h: -7.52, volume24h: 2452938421, fundingRate: 0.0100, leverage: 50 },
+  { symbol: 'ETHUSDC', name: 'Ethereum', lastPrice: 3452.85, change24h: 4.82, volume24h: 1252938421, fundingRate: -0.0025, leverage: 50 },
+  { symbol: 'SOLUSDC', name: 'Solana', lastPrice: 142.52, change24h: -5.12, volume24h: 852938421, fundingRate: 0.0042, leverage: 20 },
+  { symbol: 'XAGUSDC', name: 'Silver', lastPrice: 24.52, change24h: 0.45, volume24h: 52938421, fundingRate: 0.0010, leverage: 20 },
+];
 
 export const TRANSLATIONS = {
   en: {
@@ -66,6 +64,8 @@ export const TRANSLATIONS = {
     assets: 'Assets',
     long: 'Buy / Long',
     short: 'Sell / Short',
+    longLabel: 'Long',
+    shortLabel: 'Short',
     market: 'Market',
     limit: 'Limit',
     cross: 'Cross',
@@ -79,7 +79,7 @@ export const TRANSLATIONS = {
     liqPrice: 'Liq Price',
     openPositions: 'Open Positions',
     noPositions: 'No active positions',
-    closePos: 'Close Position',
+    closePos: 'Close',
     openOrders: 'Open Orders',
     orderHistory: 'History',
     noOrders: 'No orders',
@@ -98,6 +98,7 @@ export const TRANSLATIONS = {
     disconnect: 'Disconnect Wallet',
     connect: 'Connect Wallet',
     network: 'Network',
+    currency: 'Currency',
     address: 'Address',
     confirm: 'Confirm',
     max: 'Max',
@@ -112,6 +113,7 @@ export const TRANSLATIONS = {
     riskWarning: 'Warning: High liquidation risk!',
     depositAddress: 'Deposit Address',
     amount: 'Amount',
+    quantity: 'Quantity',
     iHaveTransferred: 'I Have Transferred',
     lastPrice: 'Last Price',
     markPrice: 'Mark Price',
@@ -158,44 +160,30 @@ export const TRANSLATIONS = {
     oneWayMode: 'One-Way Mode',
     hedgeMode: 'Hedge Mode',
     positionModeError: 'U-margin contract holds positions, position mode adjustment not supported.',
-    tradeHistoryFields: {
-        pair: 'Pair',
-        side: 'Side',
-        price: 'Price',
-        qty: 'Qty',
-        fee: 'Fee',
-        realizedPnl: 'Realized PnL',
-        value: 'Value'
+    searchPlaceholder: 'Search...',
+    marketList: {
+        contract: 'Contract',
+        lastPrice: 'Last Price',
+        change: '24h Chg',
+        volume: '24h Vol',
+        funding: 'Funding'
     },
-    cashFlowTypes: {
-        TRANSACTION_FEE: 'Transaction Fee',
-        FUNDING_FEE: 'Funding Fee',
-        REALIZED_PNL: 'Realized PnL',
-        LIQUIDATION_FEE: 'Liquidation Fee'
-    },
-    notifications: {
-        orderPlaced: 'Order Placed Successfully',
-        positionClosed: 'Position Closed Successfully',
-        orderCancelled: 'Order Cancelled Successfully',
-        positionsClosed: 'All Positions Closed',
-        ordersCancelled: 'All Orders Cancelled',
-        depositSuccess: 'Deposit Successful',
-        withdrawSuccess: 'Withdrawal Successful',
-        marginUpdated: 'Margin Updated Successfully',
-        inputAmountReq: 'Please enter a valid amount',
-        insufficientWallet: 'Insufficient wallet balance',
-        insufficientAvail: 'Insufficient available balance',
-        positionModeUpdated: 'Position Mode Updated'
-    },
-    fundingDetails: {
-      title: 'Funding Rate Details',
-      interval: 'Interval',
-      intervalValue: '1 Hour',
-      direction: 'Direction',
-      directionValue: 'Long pays Short',
-      interestRate: 'Interest Rate',
-      apr: 'Estimated APR',
-      description: 'Funding fees are exchanged between long and short positions every hour to keep the contract price aligned with the spot price.'
+    tradeHistoryFields: { pair: 'Pair', side: 'Side', price: 'Price', qty: 'Qty', fee: 'Fee', realizedPnl: 'Realized PnL', value: 'Value' },
+    cashFlowTypes: { TRANSACTION_FEE: 'Fee', FUNDING_FEE: 'Funding', REALIZED_PNL: 'PnL', LIQUIDATION_FEE: 'Liq Fee' },
+    transferStatuses: { COMPLETED: 'Completed', PENDING: 'Pending', REJECTED: 'Rejected', CANCELLED: 'Cancelled' },
+    notifications: { orderPlaced: 'Success', positionClosed: 'Closed', orderCancelled: 'Cancelled', positionsClosed: 'All Closed', ordersCancelled: 'All Cancelled', depositSuccess: 'Deposit OK', withdrawSuccess: 'Withdraw OK', marginUpdated: 'Margin OK', inputAmountReq: 'Invalid Amount', insufficientWallet: 'Low Wallet', insufficientAvail: 'Low Bal', positionModeUpdated: 'Mode OK' },
+    fundingDetails: { title: 'Funding Info', interval: 'Interval', intervalValue: '1h', direction: 'Side', directionValue: 'Long -> Short', interestRate: 'Base Rate', apr: 'APR', description: 'Mechanism to align price.' },
+    closeOperation: { title: 'Close Position', tradingPair: 'Trading Pair', estPnL: 'Est. PnL', positionSize: 'Position Size' },
+    connection: {
+        desc: 'Connect your secure wallet to deposit funds, trade XAU/USDC perpetual contracts, and manage your portfolio.',
+        selectWallet: 'Select Wallet',
+        sigRequest: 'Signature Request',
+        reject: 'Reject',
+        sign: 'Sign',
+        verifying: 'Verifying',
+        connecting: 'Connecting',
+        msgToSign: 'Message to sign',
+        secureInfo: 'Secure & Encrypted Connection'
     }
   },
   'zh-CN': {
@@ -205,6 +193,8 @@ export const TRANSLATIONS = {
     assets: '账户',
     long: '买入 / 做多',
     short: '卖出 / 做空',
+    longLabel: '多头',
+    shortLabel: '空头',
     market: '市价',
     limit: '限价',
     cross: '全仓',
@@ -237,6 +227,7 @@ export const TRANSLATIONS = {
     disconnect: '退出登录',
     connect: '连接钱包',
     network: '网络',
+    currency: '币种',
     address: '地址',
     confirm: '确认',
     max: '最大',
@@ -251,6 +242,7 @@ export const TRANSLATIONS = {
     riskWarning: '警告：强平风险较高！',
     depositAddress: '充值地址',
     amount: '金额',
+    quantity: '数量',
     iHaveTransferred: '我已转账',
     lastPrice: '最新价',
     markPrice: '标记价格',
@@ -297,44 +289,30 @@ export const TRANSLATIONS = {
     oneWayMode: '单向持仓',
     hedgeMode: '双向持仓',
     positionModeError: 'U本位合约存在持仓，不支持调整仓位模式。',
-    tradeHistoryFields: {
-        pair: '交易对',
-        side: '方向',
-        price: '成交价格',
-        qty: '成交数量',
-        fee: '交易费',
-        realizedPnl: '已实现盈亏',
-        value: '成交金额'
+    searchPlaceholder: '搜索...',
+    marketList: {
+        contract: '合约',
+        lastPrice: '最新价格',
+        change: '24h 涨跌幅',
+        volume: '24h 成交额',
+        funding: '资金费率'
     },
-    cashFlowTypes: {
-        TRANSACTION_FEE: '交易手续费',
-        FUNDING_FEE: '资金费',
-        REALIZED_PNL: '已实现盈亏',
-        LIQUIDATION_FEE: '清算费'
-    },
-    notifications: {
-        orderPlaced: '下单成功',
-        positionClosed: '平倉成功',
-        orderCancelled: '委托已取消',
-        positionsClosed: '所有仓位已平倉',
-        ordersCancelled: '所有委托已取消',
-        depositSuccess: '充值成功',
-        withdrawSuccess: '提现成功',
-        marginUpdated: '保证金调整成功',
-        inputAmountReq: '请输入有效金额',
-        insufficientWallet: '钱包余额不足',
-        insufficientAvail: '可提现余额不足',
-        positionModeUpdated: '持仓模式已更新'
-    },
-    fundingDetails: {
-      title: '资金费率详情',
-      interval: '收费间隔',
-      intervalValue: '1 小时',
-      direction: '支付方向',
-      directionValue: '多头 支付 空头',
-      interestRate: '基础利率',
-      apr: '预估年化',
-      description: '资金费率每小时在多空双方之间交换，以锚定现货价格。'
+    tradeHistoryFields: { pair: '交易对', side: '方向', price: '价格', qty: '数量', fee: '费用', realizedPnl: '盈亏', value: '金额' },
+    cashFlowTypes: { TRANSACTION_FEE: '手续费', FUNDING_FEE: '资金费', REALIZED_PNL: '盈亏', LIQUIDATION_FEE: '强平费' },
+    transferStatuses: { COMPLETED: '已完成', PENDING: '审核中', REJECTED: '已拒绝', CANCELLED: '已取消' },
+    notifications: { orderPlaced: '成功', positionClosed: '已平', orderCancelled: '已撤', positionsClosed: '全平', ordersCancelled: '全撤', depositSuccess: '成功', withdrawSuccess: '成功', marginUpdated: '成功', inputAmountReq: '金额错误', insufficientWallet: '余额不足', insufficientAvail: '不足', positionModeUpdated: '成功' },
+    fundingDetails: { title: '详情', interval: '间隔', intervalValue: '1h', direction: '方向', directionValue: '多付空', interestRate: '利率', apr: 'APR', description: '价格锚定机制' },
+    closeOperation: { title: '平仓', tradingPair: '交易对', estPnL: '预估盈亏', positionSize: '持仓数量' },
+    connection: {
+        desc: '连接您的安全钱包以存入资金、交易 XAU/USDC 永续合约并管理您的投资组合。',
+        selectWallet: '选择钱包',
+        sigRequest: '签名请求',
+        reject: '拒绝',
+        sign: '签名',
+        verifying: '验证中',
+        connecting: '连接中',
+        msgToSign: '待签名消息',
+        secureInfo: '安全且加密的连接'
     }
   },
   'zh-TW': {
@@ -344,6 +322,8 @@ export const TRANSLATIONS = {
     assets: '帳戶',
     long: '買入 / 做多',
     short: '賣出 / 做空',
+    longLabel: '多頭',
+    shortLabel: '空頭',
     market: '市價',
     limit: '限價',
     cross: '全倉',
@@ -376,6 +356,7 @@ export const TRANSLATIONS = {
     disconnect: '退出登錄',
     connect: '連接錢包',
     network: '網絡',
+    currency: '幣種',
     address: '地址',
     confirm: '確認',
     max: '最大',
@@ -390,6 +371,7 @@ export const TRANSLATIONS = {
     riskWarning: '警告：強平風險較高！',
     depositAddress: '充值地址',
     amount: '金額',
+    quantity: '數量',
     iHaveTransferred: '我已轉帳',
     lastPrice: '最新價',
     markPrice: '標記價格',
@@ -436,44 +418,30 @@ export const TRANSLATIONS = {
     oneWayMode: '單向持倉',
     hedgeMode: '雙向持倉',
     positionModeError: 'U本位合約存在持倉，不支持調整倉位模式。',
-    tradeHistoryFields: {
-        pair: '交易對',
-        side: '方向',
-        price: '成交價格',
-        qty: '成交數量',
-        fee: '交易費',
-        realizedPnl: '已實現盈虧',
-        value: '成交金額'
+    searchPlaceholder: '搜索...',
+    marketList: {
+        contract: '合約',
+        lastPrice: '最新價格',
+        change: '24h 漲跌幅',
+        volume: '24h 成交額',
+        funding: '資金費率'
     },
-    cashFlowTypes: {
-        TRANSACTION_FEE: '交易手續費',
-        FUNDING_FEE: '資金費',
-        REALIZED_PNL: '已實現盈虧',
-        LIQUIDATION_FEE: '清算費'
-    },
-    notifications: {
-        orderPlaced: '下單成功',
-        positionClosed: '平倉成功',
-        orderCancelled: '委託已取消',
-        positionsClosed: '所有倉位已平倉',
-        ordersCancelled: '所有委託已取消',
-        depositSuccess: '充值成功',
-        withdrawSuccess: '提現成功',
-        marginUpdated: '保證金調整成功',
-        inputAmountReq: '請輸入有效金額',
-        insufficientWallet: '錢包餘額不足',
-        insufficientAvail: '可提現餘額不足',
-        positionModeUpdated: '持倉模式已更新'
-    },
-    fundingDetails: {
-      title: '資金費率詳情',
-      interval: '收費間隔',
-      intervalValue: '1 小時',
-      direction: '支付方向',
-      directionValue: '多頭 支付 空頭',
-      interestRate: '基礎利率',
-      apr: '預估年化',
-      description: '資金費率每小時在多空雙方之間交換，以錨定現貨價格。'
+    tradeHistoryFields: { pair: '交易對', side: '方向', price: '價格', qty: '數量', fee: '費用', realizedPnl: '盈虧', value: '金額' },
+    cashFlowTypes: { TRANSACTION_FEE: '手續費', FUNDING_FEE: '資金費', REALIZED_PNL: '盈虧', LIQUIDATION_FEE: '強平費' },
+    transferStatuses: { COMPLETED: '已完成', PENDING: '審核中', REJECTED: '已拒絕', CANCELLED: '已取消' },
+    notifications: { orderPlaced: '成功', positionClosed: '已平', orderCancelled: '已撤', positionsClosed: '全平', ordersCancelled: '全撤', depositSuccess: '成功', withdrawSuccess: '成功', marginUpdated: '成功', inputAmountReq: '金額錯誤', insufficientWallet: '餘額不足', insufficientAvail: '不足', positionModeUpdated: '成功' },
+    fundingDetails: { title: '詳情', interval: '間隔', intervalValue: '1h', direction: '方向', directionValue: '多付空', interestRate: '利率', apr: 'APR', description: '價格錨定機制' },
+    closeOperation: { title: '平倉', tradingPair: '交易對', estPnL: '預估盈虧', positionSize: '持倉數量' },
+    connection: {
+        desc: '連接您的安全錢包以存入資金、交易 XAU/USDC 永續合約並管理您的投資組合。',
+        selectWallet: '選擇錢包',
+        sigRequest: '簽名請求',
+        reject: '拒絕',
+        sign: '簽名',
+        verifying: '驗證中',
+        connecting: '連接中',
+        msgToSign: '待簽名消息',
+        secureInfo: '安全且加密的連接'
     }
   }
 };

@@ -1,11 +1,17 @@
+
 import React, { useMemo } from 'react';
+import { Language } from '../types';
+import { TRANSLATIONS } from '../constants';
 
 interface OrderBookProps {
   currentPrice: number;
+  lang: Language;
   onPriceSelect?: (price: string) => void;
 }
 
-export const OrderBook: React.FC<OrderBookProps> = ({ currentPrice, onPriceSelect }) => {
+export const OrderBook: React.FC<OrderBookProps> = ({ currentPrice, lang, onPriceSelect }) => {
+  const t = TRANSLATIONS[lang];
+  
   // Generate mock data
   const { asks, bids } = useMemo(() => {
     const asksArr = [];
@@ -40,8 +46,8 @@ export const OrderBook: React.FC<OrderBookProps> = ({ currentPrice, onPriceSelec
     <div className="h-full flex flex-col">
        {/* Header */}
        <div className="flex justify-between text-[10px] dark:text-slate-500 text-slate-400 mb-1 px-1 uppercase tracking-wider">
-          <span>Price</span>
-          <span>Qty</span>
+          <span>{t.price}</span>
+          <span>{t.qty}</span>
        </div>
 
        {/* Asks (Sell Orders) - Red */}

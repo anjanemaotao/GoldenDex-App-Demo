@@ -35,7 +35,7 @@ export interface Position {
   leverage: number;
   unrealizedPnL: number;
   marginMode: MarginMode;
-  isolatedMargin?: number; // Specific margin for isolated positions
+  isolatedMargin?: number;
 }
 
 export interface Order {
@@ -59,21 +59,19 @@ export interface Candle {
   close: number;
 }
 
+export interface MarketInfo {
+  symbol: string;
+  name: string;
+  lastPrice: number;
+  change24h: number;
+  volume24h: number;
+  fundingRate: number;
+  leverage: number;
+}
+
 export interface Wallet {
   balance: number;
   equity: number;
-}
-
-// Deprecated: Old TradeRecord, replaced by FillRecord for detailed history
-export interface TradeRecord {
-  id: string;
-  symbol: string;
-  side: Side;
-  size: number;
-  entryPrice: number;
-  closePrice: number;
-  pnl: number;
-  timestamp: number;
 }
 
 export interface FillRecord {
@@ -82,9 +80,9 @@ export interface FillRecord {
   side: Side;
   price: number;
   size: number;
-  value: number; // size * price
+  value: number;
   fee: number;
-  realizedPnl: number; // 0 for opening trades
+  realizedPnl: number;
   timestamp: number;
 }
 
@@ -93,7 +91,8 @@ export interface TransferRecord {
   type: 'DEPOSIT' | 'WITHDRAW';
   amount: number;
   timestamp: number;
-  status: 'COMPLETED' | 'PENDING';
+  status: 'COMPLETED' | 'PENDING' | 'REJECTED' | 'CANCELLED';
+  network: string;
 }
 
 export type CashFlowType = 'TRANSACTION_FEE' | 'FUNDING_FEE' | 'REALIZED_PNL' | 'LIQUIDATION_FEE';
