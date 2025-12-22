@@ -1,12 +1,11 @@
 import { GoogleGenAI } from "@google/genai";
 import { Candle } from "../types";
 
-// Initialize Gemini
-// Note: In a real production app, you would proxy this through a backend to protect the key.
-// For this client-side demo, we assume the environment variable is injected.
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+// Initialize Gemini with the API key from environment variables as per guidelines.
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export const analyzeMarket = async (data: Candle[], currentPrice: number): Promise<string> => {
+  // Use the API key directly from process.env.API_KEY.
   if (!process.env.API_KEY) {
     return "AI Analysis Unavailable: API Key missing.";
   }
@@ -28,10 +27,12 @@ export const analyzeMarket = async (data: Candle[], currentPrice: number): Promi
   `;
 
   try {
+    // Using gemini-3-flash-preview for basic text tasks (summarization/analysis).
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3-flash-preview',
       contents: prompt,
     });
+    // The text property on the response object directly returns the string output.
     return response.text || "Analysis complete.";
   } catch (error) {
     console.error("Gemini API Error:", error);

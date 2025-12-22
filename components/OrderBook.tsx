@@ -7,36 +7,28 @@ interface OrderBookProps {
   currentPrice: number;
   lang: Language;
   onPriceSelect?: (price: string) => void;
+  markPrice?: number;
 }
 
-export const OrderBook: React.FC<OrderBookProps> = ({ currentPrice, lang, onPriceSelect }) => {
+export const OrderBook: React.FC<OrderBookProps> = ({ currentPrice, lang, onPriceSelect, markPrice }) => {
   const t = TRANSLATIONS[lang];
   
-  // Generate mock data
   const { asks, bids } = useMemo(() => {
     const asksArr = [];
     const bidsArr = [];
-    // Generate 7 levels for vertical view
     for (let i = 1; i <= 7; i++) {
-      // Asks
       asksArr.push({
         price: currentPrice + i * 0.15 + (Math.random() * 0.1),
         size: (Math.random() * 5 + 0.1).toFixed(3),
         total: Math.random() * 100 
       });
-      // Bids
       bidsArr.push({
         price: currentPrice - i * 0.15 - (Math.random() * 0.1),
         size: (Math.random() * 5 + 0.1).toFixed(3),
         total: Math.random() * 100
       });
     }
-    // Asks: Need lowest price at the bottom (closest to spread). 
-    // So we sort descending: High -> Low.
     const sortedAsks = asksArr.sort((a, b) => b.price - a.price);
-    
-    // Bids: Need highest price at the top (closest to spread).
-    // So we sort descending: High -> Low.
     const sortedBids = bidsArr.sort((a, b) => b.price - a.price);
 
     return { asks: sortedAsks, bids: sortedBids };
@@ -44,13 +36,11 @@ export const OrderBook: React.FC<OrderBookProps> = ({ currentPrice, lang, onPric
 
   return (
     <div className="h-full flex flex-col">
-       {/* Header */}
        <div className="flex justify-between text-[10px] dark:text-slate-500 text-slate-400 mb-1 px-1 uppercase tracking-wider">
           <span>{t.price}</span>
           <span>{t.qty}</span>
        </div>
 
-       {/* Asks (Sell Orders) - Red */}
        <div className="flex-1 flex flex-col justify-end space-y-0.5 mb-1">
           {asks.map((ask, i) => (
              <div 
@@ -65,12 +55,13 @@ export const OrderBook: React.FC<OrderBookProps> = ({ currentPrice, lang, onPric
           ))}
        </div>
 
-       {/* Middle: Current Price */}
-       <div className="py-2 my-1 border-y dark:border-slate-800 border-slate-200 flex items-center justify-center">
+       <div className="py-2 my-1 border-y dark:border-slate-800 border-slate-200 flex items-baseline justify-center gap-2">
           <span className="text-lg font-bold font-mono dark:text-white text-slate-900">{currentPrice.toFixed(2)}</span>
+          {markPrice && (
+            <span className="text-[10px] font-mono text-slate-400 dark:text-slate-500">{markPrice.toFixed(2)}</span>
+          )}
        </div>
 
-       {/* Bids (Buy Orders) - Green */}
        <div className="flex-1 space-y-0.5 mt-1">
           {bids.map((bid, i) => (
              <div 

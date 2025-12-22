@@ -143,6 +143,7 @@ export const TRANSLATIONS = {
     filled: 'Filled',
     status: 'Status',
     statusFilled: 'Filled',
+    statusPartialFilled: 'Partial',
     statusCancelled: 'Cancelled',
     confirmCloseAll: 'Confirm Close All',
     confirmCloseAllMsg: 'Are you sure you want to close all positions at market price?',
@@ -152,6 +153,7 @@ export const TRANSLATIONS = {
     afterMargin: 'After Margin',
     estLiqPrice: 'Liq Price',
     maxRemove: 'Max Removable',
+    maxPosition: 'Max Position',
     change24h: '24h Chg',
     vol24h: '24h Vol',
     openInterest: 'Open Interest',
@@ -161,6 +163,8 @@ export const TRANSLATIONS = {
     hedgeMode: 'Hedge Mode',
     positionModeError: 'U-margin contract holds positions, position mode adjustment not supported.',
     searchPlaceholder: 'Search...',
+    depositWarning: 'You are interacting directly with the Vault Smart Contract on Arbitrum. Ensure you have sufficient ETH for gas fees.',
+    withdrawWarning: 'Withdrawals interact directly with the Vault contract. Funds will be returned to your connected wallet address: {address}',
     marketList: {
         contract: 'Contract',
         lastPrice: 'Last Price',
@@ -172,10 +176,10 @@ export const TRANSLATIONS = {
     cashFlowTypes: { TRANSACTION_FEE: 'Fee', FUNDING_FEE: 'Funding', REALIZED_PNL: 'PnL', LIQUIDATION_FEE: 'Liq Fee' },
     transferStatuses: { COMPLETED: 'Completed', PENDING: 'Pending', REJECTED: 'Rejected', CANCELLED: 'Cancelled' },
     notifications: { orderPlaced: 'Success', positionClosed: 'Closed', orderCancelled: 'Cancelled', positionsClosed: 'All Closed', ordersCancelled: 'All Cancelled', depositSuccess: 'Deposit OK', withdrawSuccess: 'Withdraw OK', marginUpdated: 'Margin OK', inputAmountReq: 'Invalid Amount', insufficientWallet: 'Low Wallet', insufficientAvail: 'Low Bal', positionModeUpdated: 'Mode OK' },
-    fundingDetails: { title: 'Funding Info', interval: 'Interval', intervalValue: '1h', direction: 'Side', directionValue: 'Long -> Short', interestRate: 'Base Rate', apr: 'APR', description: 'Mechanism to align price.' },
+    fundingDetails: { title: 'Funding Info', interval: 'Interval', intervalValue: '1h', direction: 'Side', directionValue: 'Long -> Short', interestRate: 'Funding Rate', estimatedApr: 'Estimated APR', apr: 'APR' },
     closeOperation: { title: 'Close Position', tradingPair: 'Trading Pair', estPnL: 'Est. PnL', positionSize: 'Position Size' },
     connection: {
-        desc: 'Connect your secure wallet to deposit funds, trade XAU/USDC perpetual contracts, and manage your portfolio.',
+        desc: 'Connect your secure wallet to deposit funds, trade perpetual contracts, and manage your portfolio.',
         selectWallet: 'Select Wallet',
         sigRequest: 'Signature Request',
         reject: 'Reject',
@@ -183,7 +187,19 @@ export const TRANSLATIONS = {
         verifying: 'Verifying',
         connecting: 'Connecting',
         msgToSign: 'Message to sign',
-        secureInfo: 'Secure & Encrypted Connection'
+        secureInfo: 'Secure & Encrypted Connection',
+        approveIn: 'Please approve connection in'
+    },
+    appNotifications: {
+        deposit: { title: 'Deposit Successful', content: 'You have successfully recharged {amount} USDC.' },
+        withdraw: { title: 'Withdrawal Successful', content: 'Successfully withdrawn {amount} USDC to {address} (Arbitrum), estimated 1 minute.' },
+        orderSuccess: { title: 'Order Submitted', content: 'Successfully submitted {symbol} {side} {type} order.\nPrice ${price} | Size {size} XAU | Leverage {leverage}x' },
+        marketFilled: { title: 'Market Order Filled', content: 'Market {side} {size} XAU filled completely.\nAvg Price ${price} | Fee ${fee}' },
+        limitFilled: { title: 'Limit Order Filled', content: 'Your open order filled!\n{side} {size} XAU @ ${price} | Fee ${fee}' },
+        posClosed: { title: 'Position Closed', content: 'Successfully closed {symbol} {side}.\nClosed {size} XAU | PnL +${pnl}' },
+        posReduced: { title: 'Position Reduced', content: 'Successfully reduced {symbol} {side}, reduced {size} XAU.\nRemaining {remaining} XAU | PnL +${pnl}' },
+        liquidated: { title: 'Position Liquidated', content: 'Your {symbol} {side} position triggered liquidation. Liq Price ${price}, Fee ${fee} deducted.' },
+        marginUpdated: { title: 'Margin Adjusted', content: 'Position margin for {symbol} updated by {amount} USDC.' }
     }
   },
   'zh-CN': {
@@ -264,7 +280,7 @@ export const TRANSLATIONS = {
     approving: '正在授权 USDC...',
     depositing: '正在存入金库...',
     depositSuccess: '充值成功',
-    totalPerpValue: '持仓总价值',
+    totalPerpValue: '持仓价值',
     withdrawVaultTitle: '金库提现',
     withdrawing: '正在从金库提现...',
     withdrawSuccess: '提现成功',
@@ -272,6 +288,7 @@ export const TRANSLATIONS = {
     filled: '成交',
     status: '状态',
     statusFilled: '完全成交',
+    statusPartialFilled: '部分成交',
     statusCancelled: '已取消',
     confirmCloseAll: '确认全部平仓',
     confirmCloseAllMsg: '您确定要以市价平掉所有当前持仓吗？',
@@ -281,6 +298,7 @@ export const TRANSLATIONS = {
     afterMargin: '调整后保证金',
     estLiqPrice: '强平价',
     maxRemove: '最大可提取',
+    maxPosition: '最大持仓',
     change24h: '24h 涨跌',
     vol24h: '24h 成交额',
     openInterest: '未平仓合约',
@@ -290,6 +308,8 @@ export const TRANSLATIONS = {
     hedgeMode: '双向持仓',
     positionModeError: 'U本位合约存在持仓，不支持调整仓位模式。',
     searchPlaceholder: '搜索...',
+    depositWarning: '您正在直接与 Arbitrum 上的金库智能合约交互。请确保您有足够的 ETH 用于支付 Gas 费用。',
+    withdrawWarning: '提现直接与金库合约交互。资金将返还至您连接的钱包地址：{address}',
     marketList: {
         contract: '合约',
         lastPrice: '最新价格',
@@ -301,10 +321,10 @@ export const TRANSLATIONS = {
     cashFlowTypes: { TRANSACTION_FEE: '手续费', FUNDING_FEE: '资金费', REALIZED_PNL: '盈亏', LIQUIDATION_FEE: '强平费' },
     transferStatuses: { COMPLETED: '已完成', PENDING: '审核中', REJECTED: '已拒绝', CANCELLED: '已取消' },
     notifications: { orderPlaced: '成功', positionClosed: '已平', orderCancelled: '已撤', positionsClosed: '全平', ordersCancelled: '全撤', depositSuccess: '成功', withdrawSuccess: '成功', marginUpdated: '成功', inputAmountReq: '金额错误', insufficientWallet: '余额不足', insufficientAvail: '不足', positionModeUpdated: '成功' },
-    fundingDetails: { title: '详情', interval: '间隔', intervalValue: '1h', direction: '方向', directionValue: '多付空', interestRate: '利率', apr: 'APR', description: '价格锚定机制' },
+    fundingDetails: { title: '详情', interval: '间隔', intervalValue: '1h', direction: '方向', directionValue: '多付空', interestRate: '资金费率', estimatedApr: '预估 APR', apr: 'APR' },
     closeOperation: { title: '平仓', tradingPair: '交易对', estPnL: '预估盈亏', positionSize: '持仓数量' },
     connection: {
-        desc: '连接您的安全钱包以存入资金、交易 XAU/USDC 永续合约并管理您的投资组合。',
+        desc: '连接您的安全钱包以存入资金、交易永续合约并管理您的投资组合。',
         selectWallet: '选择钱包',
         sigRequest: '签名请求',
         reject: '拒绝',
@@ -312,7 +332,19 @@ export const TRANSLATIONS = {
         verifying: '验证中',
         connecting: '连接中',
         msgToSign: '待签名消息',
-        secureInfo: '安全且加密的连接'
+        secureInfo: '安全且加密的连接',
+        approveIn: '请在以下钱包中确认连接：'
+    },
+    appNotifications: {
+        deposit: { title: '充值成功', content: '您已成功充值 {amount} USDC，请查看。' },
+        withdraw: { title: '提现成功', content: '您已成功提现 {amount} USDC 至 {address} (Arbitrum)，预计 1 分钟到账。' },
+        orderSuccess: { title: '下单成功', content: '您已成功提交 {symbol} {side} {type}单\n价格 ${price} | 数量 {size} XAU | 杠杆 {leverage}x' },
+        marketFilled: { title: '市价单已完全成交', content: '市价{side} {size} XAU 已完全成交\n平均成交价 ${price} | 手续费 ${fee}' },
+        limitFilled: { title: '限价单已完全成交', content: '您的挂单已完全成交！\n{side} {size} XAU @ ${price} | 手续费 ${fee}' },
+        posClosed: { title: '仓位已平仓', content: '您已成功平仓 {symbol} {side}\n平仓数量 {size} XAU | 实现盈亏 +${pnl}' },
+        posReduced: { title: '仓位已减仓', content: '已成功减仓 {symbol} {side}，减仓 {size} XAU\n剩余仓位 {remaining} XAU | 实现盈亏 +${pnl}' },
+        liquidated: { title: '仓位已强平', content: '您的 {symbol} {side} 仓位已触发强平，强平价格 ${price}，已扣除 ${fee} 强平罚金。' },
+        marginUpdated: { title: '保证金已调整', content: '{symbol} 仓位保证金已变动 {amount} USDC。' }
     }
   },
   'zh-TW': {
@@ -393,7 +425,7 @@ export const TRANSLATIONS = {
     approving: '正在授權 USDC...',
     depositing: '正在存入金庫...',
     depositSuccess: '充值成功',
-    totalPerpValue: '持倉總價值',
+    totalPerpValue: '持倉價值',
     withdrawVaultTitle: '金庫提現',
     withdrawing: '正在從金庫提現...',
     withdrawSuccess: '提現成功',
@@ -401,6 +433,7 @@ export const TRANSLATIONS = {
     filled: '成交',
     status: '狀態',
     statusFilled: '完全成交',
+    statusPartialFilled: '部分成交',
     statusCancelled: '已取消',
     confirmCloseAll: '確認全部平倉',
     confirmCloseAllMsg: '您確定要以市價平掉所有當前持倉嗎？',
@@ -410,6 +443,7 @@ export const TRANSLATIONS = {
     afterMargin: '調整後保證金',
     estLiqPrice: '強平價',
     maxRemove: '最大可提取',
+    maxPosition: '最大持倉',
     change24h: '24h 漲跌',
     vol24h: '24h 成交額',
     openInterest: '未平仓合约',
@@ -419,6 +453,8 @@ export const TRANSLATIONS = {
     hedgeMode: '雙向持倉',
     positionModeError: 'U本位合約存在持倉，不支持調整倉位模式。',
     searchPlaceholder: '搜索...',
+    depositWarning: '您正在直接與 Arbitrum 上的金庫智能合約交互。請確保您有足夠的 ETH 用於支付 Gas 費用。',
+    withdrawWarning: '提現直接與金庫合約交互。資金將返還至您連接的錢包地址：{address}',
     marketList: {
         contract: '合約',
         lastPrice: '最新價格',
@@ -430,10 +466,10 @@ export const TRANSLATIONS = {
     cashFlowTypes: { TRANSACTION_FEE: '手續費', FUNDING_FEE: '資金費', REALIZED_PNL: '盈虧', LIQUIDATION_FEE: '強平費' },
     transferStatuses: { COMPLETED: '已完成', PENDING: '審核中', REJECTED: '已拒絕', CANCELLED: '已取消' },
     notifications: { orderPlaced: '成功', positionClosed: '已平', orderCancelled: '已撤', positionsClosed: '全平', ordersCancelled: '全撤', depositSuccess: '成功', withdrawSuccess: '成功', marginUpdated: '成功', inputAmountReq: '金額錯誤', insufficientWallet: '餘額不足', insufficientAvail: '不足', positionModeUpdated: '成功' },
-    fundingDetails: { title: '詳情', interval: '間隔', intervalValue: '1h', direction: '方向', directionValue: '多付空', interestRate: '利率', apr: 'APR', description: '價格錨定機制' },
+    fundingDetails: { title: '詳情', interval: '間隔', intervalValue: '1h', direction: '方向', directionValue: '多付空', interestRate: '資金費率', estimatedApr: '預估 APR', apr: 'APR' },
     closeOperation: { title: '平倉', tradingPair: '交易對', estPnL: '預估盈虧', positionSize: '持倉數量' },
     connection: {
-        desc: '連接您的安全錢包以存入資金、交易 XAU/USDC 永續合約並管理您的投資組合。',
+        desc: '連接您的安全錢包以存入資金、交易永續合約並管理您的投資組合。',
         selectWallet: '選擇錢包',
         sigRequest: '簽名請求',
         reject: '拒絕',
@@ -441,7 +477,19 @@ export const TRANSLATIONS = {
         verifying: '驗證中',
         connecting: '連接中',
         msgToSign: '待簽名消息',
-        secureInfo: '安全且加密的連接'
+        secureInfo: '安全且加密的連接',
+        approveIn: '請在以下錢包中確認連接：'
+    },
+    appNotifications: {
+        deposit: { title: '充值成功', content: '您已成功充值 {amount} USDC，請查看。' },
+        withdraw: { title: '提現成功', content: '您已成功提現 {amount} USDC 至 {address} (Arbitrum)，預計 1 分鐘到帳。' },
+        orderSuccess: { title: '下單成功', content: '您已成功提交 {symbol} {side} {type}單\n價格 ${price} | 數量 {size} XAU | 杠杆 {leverage}x' },
+        marketFilled: { title: '市價單已完全成交', content: '市價{side} {size} XAU 已完全成交\n平均成交價 ${price} | 手續費 ${fee}' },
+        limitFilled: { title: '限價單已完全成交', content: '您的掛單已完全成交！\n{side} {size} XAU @ ${price} | 手續費 ${fee}' },
+        posClosed: { title: '倉位已平倉', content: '您已成功平倉 {symbol} {side}\n平倉數量 {size} XAU | 實現盈虧 +${pnl}' },
+        posReduced: { title: '倉位已減倉', content: '已成功減倉 {symbol} {side}，減倉 {size} XAU\n餘倉位 {remaining} XAU | 實現盈虧 +${pnl}' },
+        liquidated: { title: '倉位已強平', content: '您的 {symbol} {side} 倉位已觸發強平，強平價格 ${price}，已扣除 ${fee} 強平罰金。' },
+        marginUpdated: { title: '保證金已調整', content: '{symbol} 倉位保證金已變動 {amount} USDC。' }
     }
   }
 };

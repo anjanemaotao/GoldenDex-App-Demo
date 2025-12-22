@@ -4,7 +4,7 @@ import { Settings2, Info, X, BarChart2, TrendingUp, Layers, ChevronDown, Edit2, 
 import { CandleChart } from './CandleChart';
 import { OrderBook } from './OrderBook';
 import { DepthChart } from './DepthChart';
-import { Candle, Side, MarginMode, Language, ChartType, MarketTrade, Timeframe, MarketInfo } from '../types';
+import { Candle, Side, MarginMode, Language, ChartType, MarketTrade, Timeframe, MarketInfo, Position } from '../types';
 import { TRANSLATIONS, MOCK_MARKETS } from '../constants';
 
 interface TradeViewProps {
@@ -19,6 +19,7 @@ interface TradeViewProps {
   lang: Language;
   timeframe: Timeframe;
   onTimeframeChange: (tf: Timeframe) => void;
+  positions: Position[];
 }
 
 const TIMEFRAMES: Timeframe[] = ['1m', '3m', '5m', '15m', '30m', '1H', '2H', '4H', '8H', '12H', '1D', '3D', '1W', '1M'];
@@ -34,7 +35,8 @@ export const TradeView: React.FC<TradeViewProps> = ({
   onPlaceOrder, 
   lang,
   timeframe,
-  onTimeframeChange
+  onTimeframeChange,
+  positions
 }) => {
   const t = TRANSLATIONS[lang];
   const [orderType, setOrderType] = useState<'MARKET' | 'LIMIT'>('MARKET');
@@ -56,6 +58,10 @@ export const TradeView: React.FC<TradeViewProps> = ({
 
   const changePercent = ((currentPrice - currentMarket.lastPrice * 0.98) / (currentMarket.lastPrice * 0.98)) * 100;
   const isPositiveChange = changePercent >= 0;
+
+  const currentSymbolPositionValue = positions
+    .filter(p => p.symbol === symbol)
+    .reduce((acc, p) => acc + (p.size * currentPrice), 0);
 
   const filteredMarkets = useMemo(() => {
     return MOCK_MARKETS.filter(m => 
@@ -100,7 +106,6 @@ export const TradeView: React.FC<TradeViewProps> = ({
 
   return (
     <div className="flex flex-col h-full pb-20 overflow-y-auto no-scrollbar dark:bg-slate-900 bg-slate-50 relative">
-      {/* Dynamic Header */}
       <div className="dark:bg-slate-900 bg-white border-b dark:border-slate-800 border-slate-200 sticky top-0 z-30 shadow-sm">
           <div className="px-4 py-3 flex justify-between items-center">
             <div 
@@ -135,8 +140,8 @@ export const TradeView: React.FC<TradeViewProps> = ({
           
           <div className="px-4 py-2 flex items-center justify-between gap-6 overflow-x-auto no-scrollbar whitespace-nowrap text-[10px] dark:bg-slate-800/50 bg-slate-50 border-t dark:border-slate-800 border-slate-100">
              <div className="flex flex-col shrink-0">
-                <span className="text-slate-400 mb-0.5">{t.markPrice}</span>
-                <span className="font-mono dark:text-slate-200 text-slate-700">{currentPrice.toFixed(2)}</span>
+                <span className="text-slate-400 mb-0.5">{t.totalPerpValue}</span>
+                <span className="font-mono dark:text-slate-200 text-slate-700 font-bold">{currentSymbolPositionValue.toFixed(2)}</span>
              </div>
              <div className="flex flex-col shrink-0">
                 <span className="text-slate-400 mb-0.5">{t.vol24h}</span>
@@ -156,7 +161,6 @@ export const TradeView: React.FC<TradeViewProps> = ({
           </div>
       </div>
 
-      {/* Contract Switcher Modal - Centered and constrained to App width */}
       {showMarketSelector && (
           <div className="fixed top-0 bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md z-50 flex flex-col bg-white dark:bg-slate-900 animate-in fade-in slide-in-from-top duration-300 shadow-2xl border-x dark:border-slate-800 border-slate-200">
               <div className="p-4 flex items-center gap-3 border-b dark:border-slate-800 border-slate-100">
@@ -219,7 +223,6 @@ export const TradeView: React.FC<TradeViewProps> = ({
           </div>
       )}
 
-      {/* Existing Chart and Panels */}
       <div className="relative border-b dark:border-slate-800 border-slate-200 dark:bg-slate-900 bg-white min-h-[290px]">
         <div className="flex items-center gap-1 overflow-x-auto no-scrollbar px-2 py-2 border-b dark:border-slate-800 border-slate-100 touch-pan-x">
            {TIMEFRAMES.map((tf) => (
@@ -241,7 +244,7 @@ export const TradeView: React.FC<TradeViewProps> = ({
                 <button onClick={() => setActiveBookTab('trades')} className={`flex-1 py-2 text-[10px] font-bold transition-colors border-b-2 ${activeBookTab === 'trades' ? 'border-indigo-500 text-indigo-500' : 'border-transparent text-slate-400'}`}>{t.tabRecentTrades}</button>
              </div>
              <div className="flex-1 overflow-hidden p-1">
-                {activeBookTab === 'book' ? <OrderBook currentPrice={currentPrice} lang={lang} onPriceSelect={(p) => setLimitPrice(p)} /> : (
+                {activeBookTab === 'book' ? <OrderBook currentPrice={currentPrice} lang={lang} onPriceSelect={(p) => setLimitPrice(p)} markPrice={currentPrice * 1.0001} /> : (
                    <div className="h-full overflow-y-auto no-scrollbar px-1">
                       <div className="grid grid-cols-2 text-[9px] dark:text-slate-500 text-slate-400 mb-1"><span>{t.price}</span><span className="text-right">{t.qty}</span></div>
                       {marketTrades.map((trade) => (
@@ -319,7 +322,7 @@ export const TradeView: React.FC<TradeViewProps> = ({
         <div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in">
              <div className="bg-white dark:bg-slate-800 rounded-xl w-full max-w-sm p-6 shadow-2xl animate-in zoom-in-95 duration-200">
                  <div className="flex justify-between items-center mb-6"><h3 className="text-lg font-bold dark:text-white text-slate-900">{t.leverage}</h3><button onClick={() => setShowLeverageModal(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-white"><X size={20}/></button></div>
-                 <div className="mb-8 text-center"><div className="text-4xl font-mono font-bold text-indigo-500 mb-2">{tempLeverage}x</div><div className="text-xs text-slate-500">Max Position: ${(balance * tempLeverage).toLocaleString()}</div></div>
+                 <div className="mb-8 text-center"><div className="text-4xl font-mono font-bold text-indigo-500 mb-2">{tempLeverage}x</div><div className="text-xs text-slate-500">{t.maxPosition}: ${(balance * tempLeverage).toLocaleString()}</div></div>
                  <div className="mb-6 px-2"><input type="range" min="1" max="100" step="1" value={tempLeverage} onChange={(e) => setTempLeverage(parseInt(e.target.value))} className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500" /><div className="flex justify-between text-xs text-slate-400 mt-2 font-mono"><span>1x</span><span>25x</span><span>50x</span><span>75x</span><span>100x</span></div></div>
                  <div className="grid grid-cols-2 gap-3"><button onClick={() => setShowLeverageModal(false)} className="py-3 rounded-xl border border-slate-200 dark:border-slate-700 font-bold text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700">{t.cancel}</button><button onClick={() => { setLeverage(tempLeverage); setShowLeverageModal(false); if (amount && parseFloat(amount) > 0) { const newMax = (balance * tempLeverage) / executionPrice; const newPct = Math.min(100, (parseFloat(amount) / newMax) * 100); setSizeSliderValue(newPct); } }} className="py-3 rounded-xl bg-indigo-600 text-white font-bold shadow-lg shadow-indigo-500/20 hover:bg-indigo-500">{t.confirmAction}</button></div>
              </div>
@@ -335,8 +338,7 @@ export const TradeView: React.FC<TradeViewProps> = ({
                      <div className="flex justify-between text-sm"><span className="text-slate-500">{t.fundingDetails.direction}</span><span className="font-mono text-emerald-500">{t.fundingDetails.directionValue}</span></div>
                      <div className="border-t dark:border-slate-700 border-slate-100 my-2"></div>
                      <div className="flex justify-between text-sm"><span className="text-slate-500">{t.fundingDetails.interestRate}</span><span className="font-mono dark:text-slate-200 text-slate-800">0.0100%</span></div>
-                     <div className="flex justify-between text-sm"><span className="text-slate-500">Estimated APR</span><span className="font-mono text-orange-400">1.53%</span></div>
-                     <div className="bg-indigo-50 dark:bg-slate-700/50 p-3 rounded-lg mt-4"><div className="flex gap-2"><Info size={16} className="text-indigo-500 shrink-0 mt-0.5"/><p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">{t.fundingDetails.description}</p></div></div>
+                     <div className="flex justify-between text-sm"><span className="text-slate-500">{t.fundingDetails.estimatedApr}</span><span className="font-mono text-orange-400">1.53%</span></div>
                  </div>
                  <button onClick={() => setShowFundingModal(false)} className="w-full mt-6 py-3 bg-indigo-600 text-white font-bold rounded-lg shadow-lg shadow-indigo-500/20">{t.confirmAction}</button>
              </div>
