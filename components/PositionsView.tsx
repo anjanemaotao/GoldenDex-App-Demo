@@ -232,7 +232,7 @@ export const PositionsView: React.FC<PositionsViewProps> = ({
         })}
       </div>
 
-      {/* Close Position Modal - Redesigned to match Adjust Margin and Trade interface slider */}
+      {/* Close Position Modal - Redesigned to match Adjust Margin style and reuse slider UI */}
       {closingPos && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
              <div className="bg-white dark:bg-slate-800 w-full max-w-sm rounded-2xl p-6 shadow-2xl animate-in zoom-in-95 duration-200 border dark:border-slate-700 border-slate-200">
@@ -308,7 +308,7 @@ export const PositionsView: React.FC<PositionsViewProps> = ({
                     </div>
                 </div>
 
-                {/* Percentage Slider - Mirroring TradeView UI */}
+                {/* Percentage Slider - Mirrored from Trade interface */}
                 <div className="mb-8 px-2 relative h-10 flex items-center">
                    <div className="absolute inset-x-0 h-1 bg-slate-200 dark:bg-slate-700 rounded-lg">
                       <div className="h-full bg-indigo-500 rounded-l-lg" style={{ width: `${closePercent}%` }} />

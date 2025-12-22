@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Wallet, CreditCard, ArrowRightLeft, Shield, Settings, History, ChevronLeft, Copy, CheckCircle, ExternalLink, ArrowDownLeft, ArrowUpRight, LogOut, User, Coins, Moon, Sun, Loader2, X, ChevronRight, Lock, Filter, Sliders, ArrowRight, ArrowLeftRight } from 'lucide-react';
 import { FillRecord, TransferRecord, Side, Language, Theme, CashFlowRecord, CashFlowType, PositionMode } from '../types';
@@ -212,304 +213,7 @@ export const AccountView: React.FC<AccountViewProps> = ({
       }, 1500);
   };
 
-  // Implementation of missing render functions for the Account sub-views
-
-  const renderDepositView = () => (
-    <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-900 animate-in fade-in duration-300">
-      <div className="px-4 py-4 border-b dark:border-slate-800 border-slate-200 flex items-center gap-3 sticky top-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md z-10">
-        <button onClick={() => setView('MAIN')} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
-          <ChevronLeft size={24} className="text-slate-500" />
-        </button>
-        <h2 className="text-lg font-bold dark:text-white text-slate-900">{t.depositVaultTitle}</h2>
-      </div>
-
-      <div className="p-6">
-        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border dark:border-slate-700 border-slate-100 mb-6">
-          <div className="flex justify-between mb-4">
-            <span className="text-sm text-slate-500">{t.walletBalance}</span>
-            <span className="text-sm font-mono dark:text-white text-slate-900">{externalWalletBalance.toFixed(2)} USDC</span>
-          </div>
-          <div className="relative mb-6">
-            <input
-              type="text"
-              value={depositAmount}
-              onChange={handleDepositChange}
-              placeholder="0.00"
-              className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4 text-2xl font-mono outline-none focus:border-indigo-500 dark:text-white"
-            />
-            <button
-              onClick={() => setDepositAmount(externalWalletBalance.toString())}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-indigo-500"
-            >
-              {t.max}
-            </button>
-          </div>
-          
-          <button
-            onClick={handleWeb3Deposit}
-            disabled={depositStatus !== 'IDLE' || !depositAmount || parseFloat(depositAmount) <= 0 || parseFloat(depositAmount) > externalWalletBalance}
-            className={`w-full py-4 rounded-xl font-bold transition-all shadow-lg flex items-center justify-center gap-3 ${
-              depositStatus === 'IDLE' && depositAmount && parseFloat(depositAmount) > 0 && parseFloat(depositAmount) <= externalWalletBalance
-              ? 'bg-indigo-600 text-white shadow-indigo-600/20'
-              : 'bg-slate-200 dark:bg-slate-700 text-slate-400 cursor-not-allowed'
-            }`}
-          >
-            {depositStatus === 'APPROVING' && <><Loader2 size={18} className="animate-spin" /> {t.approving}</>}
-            {depositStatus === 'DEPOSITING' && <><Loader2 size={18} className="animate-spin" /> {t.depositing}</>}
-            {depositStatus === 'SUCCESS' && <><CheckCircle size={18} /> {t.depositSuccess}</>}
-            {depositStatus === 'IDLE' && t.confirm}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderWithdrawView = () => (
-    <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-900 animate-in fade-in duration-300">
-      <div className="px-4 py-4 border-b dark:border-slate-800 border-slate-200 flex items-center gap-3 sticky top-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md z-10">
-        <button onClick={() => setView('MAIN')} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
-          <ChevronLeft size={24} className="text-slate-500" />
-        </button>
-        <h2 className="text-lg font-bold dark:text-white text-slate-900">{t.withdrawVaultTitle}</h2>
-      </div>
-
-      <div className="p-6">
-        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border dark:border-slate-700 border-slate-100 mb-6">
-          <div className="flex justify-between mb-4">
-            <span className="text-sm text-slate-500">{t.avail} (USDC)</span>
-            <span className="text-sm font-mono dark:text-white text-slate-900">{balance.toFixed(2)} USDC</span>
-          </div>
-          <div className="relative mb-6">
-            <input
-              type="text"
-              value={withdrawAmount}
-              onChange={handleWithdrawChange}
-              placeholder="0.00"
-              className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4 text-2xl font-mono outline-none focus:border-indigo-500 dark:text-white"
-            />
-            <button
-              onClick={() => setWithdrawAmount(balance.toString())}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-indigo-500"
-            >
-              {t.max}
-            </button>
-          </div>
-
-          <button
-            onClick={handleWeb3Withdraw}
-            disabled={withdrawStatus !== 'IDLE' || !withdrawAmount || parseFloat(withdrawAmount) <= 0 || parseFloat(withdrawAmount) > balance}
-            className={`w-full py-4 rounded-xl font-bold transition-all shadow-lg flex items-center justify-center gap-3 ${
-              withdrawStatus === 'IDLE' && withdrawAmount && parseFloat(withdrawAmount) > 0 && parseFloat(withdrawAmount) <= balance
-              ? 'bg-indigo-600 text-white shadow-indigo-600/20'
-              : 'bg-slate-200 dark:bg-slate-700 text-slate-400 cursor-not-allowed'
-            }`}
-          >
-            {withdrawStatus === 'WITHDRAWING' && <><Loader2 size={18} className="animate-spin" /> {t.withdrawing}</>}
-            {withdrawStatus === 'SUCCESS' && <><CheckCircle size={18} /> {t.withdrawSuccess}</>}
-            {withdrawStatus === 'IDLE' && t.confirm}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderFillHistoryView = () => (
-    <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-900 animate-in fade-in duration-300">
-      <div className="px-4 py-4 border-b dark:border-slate-800 border-slate-200 flex items-center gap-3 sticky top-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md z-10">
-        <button onClick={() => setView('MAIN')} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
-          <ChevronLeft size={24} className="text-slate-500" />
-        </button>
-        <h2 className="text-lg font-bold dark:text-white text-slate-900">{t.history}</h2>
-      </div>
-      <div className="flex-1 p-4 space-y-3 overflow-y-auto no-scrollbar">
-        {fillHistory.map((fill) => (
-          <div key={fill.id} className="bg-white dark:bg-slate-800 border dark:border-slate-700 border-slate-200 rounded-xl p-4 shadow-sm">
-            <div className="flex justify-between items-start mb-2">
-              <div className="flex items-center gap-2">
-                <span className={`text-sm font-bold ${fill.side === Side.LONG ? 'text-emerald-500' : 'text-rose-500'}`}>
-                  {fill.side === Side.LONG ? t.longLabel : t.shortLabel} {fill.symbol}
-                </span>
-              </div>
-              <span className="text-[10px] text-slate-400">{new Date(fill.timestamp).toLocaleString()}</span>
-            </div>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <div className="text-slate-500">{t.tradeHistoryFields.price}: <span className="font-mono dark:text-slate-200 text-slate-800">{fill.price.toFixed(2)}</span></div>
-              <div className="text-slate-500 text-right">{t.tradeHistoryFields.qty}: <span className="font-mono dark:text-slate-200 text-slate-800">{fill.size.toFixed(4)}</span></div>
-              <div className="text-slate-500">{t.tradeHistoryFields.fee}: <span className="font-mono dark:text-slate-200 text-slate-800">{fill.fee.toFixed(2)}</span></div>
-              <div className="text-slate-500 text-right">{t.tradeHistoryFields.realizedPnl}: <span className={`font-mono font-bold ${fill.realizedPnl >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>{fill.realizedPnl.toFixed(2)}</span></div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-
-  const renderTransferHistoryView = () => (
-    <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-900 animate-in fade-in duration-300">
-      <div className="px-4 py-4 border-b dark:border-slate-800 border-slate-200 flex items-center gap-3 sticky top-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md z-10">
-        <button onClick={() => setView('MAIN')} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
-          <ChevronLeft size={24} className="text-slate-500" />
-        </button>
-        <h2 className="text-lg font-bold dark:text-white text-slate-900">{t.transfers}</h2>
-      </div>
-      <div className="flex-1 p-4 space-y-3 overflow-y-auto no-scrollbar">
-        {transferHistory.map((tx) => (
-          <div key={tx.id} className="bg-white dark:bg-slate-800 border dark:border-slate-700 border-slate-200 rounded-xl p-4 shadow-sm">
-            <div className="flex justify-between items-center mb-2">
-              <div className="flex items-center gap-2">
-                <div className={`p-1.5 rounded-full ${tx.type === 'DEPOSIT' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>
-                  {tx.type === 'DEPOSIT' ? <ArrowDownLeft size={16} /> : <ArrowUpRight size={16} />}
-                </div>
-                <span className="font-bold dark:text-white text-slate-900">{tx.type === 'DEPOSIT' ? t.deposit : t.withdraw}</span>
-              </div>
-              <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${
-                tx.status === 'COMPLETED' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-slate-100 dark:bg-slate-700 text-slate-500'
-              }`}>
-                {t.transferStatuses[tx.status]}
-              </span>
-            </div>
-            <div className="flex justify-between items-end">
-              <div className="text-xs text-slate-500">
-                <div className="mb-1">{tx.network}</div>
-                <div>{new Date(tx.timestamp).toLocaleString()}</div>
-              </div>
-              <div className="text-right">
-                <div className="font-mono font-bold dark:text-white text-slate-900">{tx.amount.toFixed(2)} USDC</div>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-
-  const renderSettingsView = () => (
-    <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-900 animate-in fade-in duration-300">
-      <div className="px-4 py-4 border-b dark:border-slate-800 border-slate-200 flex items-center gap-3 sticky top-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md z-10">
-        <button onClick={() => setView('MAIN')} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
-          <ChevronLeft size={24} className="text-slate-500" />
-        </button>
-        <h2 className="text-lg font-bold dark:text-white text-slate-900">{t.settings}</h2>
-      </div>
-
-      <div className="p-4 space-y-6">
-        {/* Language */}
-        <div className="space-y-3">
-          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t.language}</label>
-          <div className="grid grid-cols-3 gap-2">
-            {(['en', 'zh-CN', 'zh-TW'] as Language[]).map((lang) => (
-              <button
-                key={lang}
-                onClick={() => setLanguage(lang)}
-                className={`py-3 rounded-xl text-xs font-bold transition-all border ${
-                  language === lang 
-                  ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-600/20' 
-                  : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400'
-                }`}
-              >
-                {lang === 'en' ? 'English' : lang === 'zh-CN' ? '简体中文' : '繁體中文'}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Theme */}
-        <div className="space-y-3">
-          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t.theme}</label>
-          <div className="grid grid-cols-2 gap-2">
-            {(['light', 'dark'] as Theme[]).map((thm) => (
-              <button
-                key={thm}
-                onClick={() => setTheme(thm)}
-                className={`py-3 rounded-xl text-xs font-bold transition-all border flex items-center justify-center gap-2 ${
-                  theme === thm 
-                  ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-600/20' 
-                  : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400'
-                }`}
-              >
-                {thm === 'light' ? <Sun size={14} /> : <Moon size={14} />}
-                {t[thm]}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Position Mode */}
-        <div className="space-y-3">
-          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t.positionMode}</label>
-          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-             {(['ONE_WAY', 'HEDGE'] as PositionMode[]).map((mode) => (
-               <button
-                 key={mode}
-                 onClick={() => onSetPositionMode(mode)}
-                 className={`w-full p-4 flex items-center justify-between text-left transition-colors ${
-                   positionMode === mode ? 'bg-indigo-50 dark:bg-indigo-900/20' : ''
-                 } border-b last:border-b-0 border-slate-100 dark:border-slate-700`}
-               >
-                 <div>
-                    <div className={`text-sm font-bold ${positionMode === mode ? 'text-indigo-500' : 'dark:text-white text-slate-900'}`}>
-                      {mode === 'ONE_WAY' ? t.oneWayMode : t.hedgeMode}
-                    </div>
-                 </div>
-                 {positionMode === mode && <CheckCircle size={18} className="text-indigo-500" />}
-               </button>
-             ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderCashFlowHistoryView = () => (
-    <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-900 animate-in fade-in duration-300">
-      <div className="px-4 py-4 border-b dark:border-slate-800 border-slate-200 flex items-center gap-3 sticky top-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md z-10">
-        <button onClick={() => setView('MAIN')} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
-          <ChevronLeft size={24} className="text-slate-500" />
-        </button>
-        <h2 className="text-lg font-bold dark:text-white text-slate-900">{t.funding}</h2>
-      </div>
-
-      {/* Filter Tabs */}
-      <div className="flex bg-white dark:bg-slate-800 border-b dark:border-slate-800 border-slate-200 overflow-x-auto no-scrollbar">
-         {(['ALL', 'TRANSACTION_FEE', 'FUNDING_FEE', 'REALIZED_PNL', 'LIQUIDATION_FEE'] as const).map((filter) => (
-           <button
-             key={filter}
-             onClick={() => setCashFlowFilter(filter)}
-             className={`px-4 py-3 text-[10px] font-bold whitespace-nowrap transition-colors border-b-2 ${
-               cashFlowFilter === filter 
-               ? 'border-indigo-500 text-indigo-500' 
-               : 'border-transparent text-slate-400'
-             }`}
-           >
-             {filter === 'ALL' ? t.all : t.cashFlowTypes[filter as CashFlowType]}
-           </button>
-         ))}
-      </div>
-
-      <div className="flex-1 p-4 space-y-3 overflow-y-auto no-scrollbar">
-        {cashFlowHistory
-          .filter(cf => cashFlowFilter === 'ALL' || cf.type === cashFlowFilter)
-          .map((cf) => (
-          <div key={cf.id} className="bg-white dark:bg-slate-800 border dark:border-slate-700 border-slate-200 rounded-xl p-4 shadow-sm">
-            <div className="flex justify-between items-center">
-              <div>
-                <div className="text-xs font-bold dark:text-white text-slate-900 mb-1">{t.cashFlowTypes[cf.type]}</div>
-                <div className="text-[10px] text-slate-500">{cf.symbol}</div>
-              </div>
-              <div className="text-right">
-                <div className={`font-mono font-bold ${cf.amount >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                  {cf.amount >= 0 ? '+' : ''}{cf.amount.toFixed(2)} USDC
-                </div>
-                <div className="text-[10px] text-slate-400">{new Date(cf.timestamp).toLocaleString()}</div>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-
-  // Login Flow Handlers
+  // --- Connect Wallet Screen & Login Flow ---
   if (!isConnected) {
     return (
       <div className="flex flex-col items-center justify-center h-full p-6 dark:bg-slate-900 bg-slate-50 relative overflow-hidden">
@@ -528,7 +232,7 @@ export const AccountView: React.FC<AccountViewProps> = ({
                 </div>
                 <h1 className="text-3xl font-bold dark:text-white text-slate-900 mb-3 tracking-tight">{t.connect}</h1>
                 <p className="dark:text-slate-400 text-slate-600 text-center mb-12 text-sm leading-relaxed">
-                  {t.connection.desc}
+                   {t.connection.desc}
                 </p>
                 
                 <button
@@ -638,7 +342,7 @@ export const AccountView: React.FC<AccountViewProps> = ({
                          <button 
                             onClick={handleSignMessage}
                             disabled={loginStep === 'VERIFYING'}
-                            className="flex-1 py-3 rounded-xl bg-indigo-600 text-white font-bold shadow-lg shadow-indigo-500/20 text-sm flex items-center justify-center gap-2"
+                            className="flex-1 py-3 rounded-xl bg-indigo-600 text-white font-bold shadow-lg shadow-indigo-600/20 text-sm flex items-center justify-center gap-2"
                          >
                              {loginStep === 'VERIFYING' ? (
                                  <>
@@ -665,7 +369,498 @@ export const AccountView: React.FC<AccountViewProps> = ({
     );
   }
 
-  // Switch between sub-views based on ViewState
+  const renderDepositView = () => {
+    const depVal = parseFloat(depositAmount);
+    const isDepositValid = !isNaN(depVal) && depVal > 0 && depVal <= externalWalletBalance;
+
+    return (
+      <div className="h-full flex flex-col p-4 bg-slate-50 dark:bg-slate-900 animate-in slide-in-from-right duration-200">
+        <div className="flex items-center gap-3 mb-6">
+          <button onClick={() => setView('MAIN')} className="p-2 -ml-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full dark:text-white">
+            <ChevronLeft size={24} />
+          </button>
+          <h2 className="text-xl font-bold dark:text-white text-slate-900">{t.depositVaultTitle}</h2>
+        </div>
+
+        <div className="space-y-6">
+           {/* Network Selector */}
+           <div>
+             <label className="text-xs dark:text-slate-400 text-slate-500 block mb-2 font-bold uppercase">{t.network}</label>
+             <div className="bg-white dark:bg-slate-800 border dark:border-slate-700 border-slate-200 rounded-xl p-4 flex items-center gap-3 shadow-sm">
+                <div className="w-6 h-6 rounded-full bg-[#2D374B] flex items-center justify-center">
+                   <div className="w-3 h-3 bg-[#12AAFF] rounded-full"></div>
+                </div>
+                <div className="flex-1 font-bold dark:text-white text-slate-900">Arbitrum One</div>
+                <CheckCircle size={18} className="text-emerald-500" />
+             </div>
+           </div>
+
+           {/* Currency Selector */}
+           <div>
+             <label className="text-xs dark:text-slate-400 text-slate-500 block mb-2 font-bold uppercase">{t.currency}</label>
+             <div className="bg-white dark:bg-slate-800 border dark:border-slate-700 border-slate-200 rounded-xl p-4 flex items-center gap-3 shadow-sm opacity-80 cursor-not-allowed">
+                <div className="w-6 h-6 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-500">
+                   <Coins size={14} />
+                </div>
+                <div className="flex-1 font-bold dark:text-white text-slate-900">USDC</div>
+                <CheckCircle size={18} className="text-emerald-500" />
+             </div>
+           </div>
+
+           {/* Amount Input */}
+           <div>
+              <div className="flex justify-between mb-2">
+                  <label className="text-xs dark:text-slate-400 text-slate-500 font-bold uppercase">{t.amount}</label>
+                  <span className="text-xs dark:text-slate-400 text-slate-500">{t.walletBalance}: <span className="dark:text-white text-slate-900 font-mono">{externalWalletBalance.toFixed(2)}</span></span>
+              </div>
+              <div className="relative">
+                  <input 
+                      type="text" 
+                      inputMode="decimal"
+                      value={depositAmount}
+                      onChange={handleDepositChange}
+                      placeholder={t.quantity}
+                      disabled={depositStatus !== 'IDLE'}
+                      className="w-full bg-white dark:bg-slate-800 border dark:border-slate-700 border-slate-200 rounded-xl p-4 dark:text-white text-slate-900 font-mono focus:border-indigo-500 outline-none pr-16 text-lg"
+                  />
+                  <button 
+                    onClick={() => setDepositAmount(externalWalletBalance.toString())}
+                    className="absolute right-16 top-1/2 -translate-y-1/2 text-xs font-bold text-indigo-500 mr-2"
+                    disabled={depositStatus !== 'IDLE'}
+                  >
+                    {t.max}
+                  </button>
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-500">USDC</span>
+              </div>
+           </div>
+
+           {/* Info Card */}
+           <div className="bg-indigo-50 dark:bg-slate-800/50 p-4 rounded-xl border border-indigo-100 dark:border-slate-700">
+              <div className="flex gap-2">
+                  <Shield size={16} className="text-indigo-500 shrink-0 mt-0.5" />
+                  <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                     You are interacting directly with the Vault Smart Contract on Arbitrum. Ensure you have sufficient ETH for gas fees.
+                  </p>
+              </div>
+           </div>
+
+           {/* Action Button */}
+           <button 
+              onClick={handleWeb3Deposit}
+              disabled={!isDepositValid || depositStatus !== 'IDLE'}
+              className={`w-full py-4 rounded-xl font-bold transition-all active:scale-95 flex items-center justify-center gap-2 shadow-lg
+                  ${isDepositValid && depositStatus === 'IDLE' 
+                    ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-600/20' 
+                    : depositStatus === 'SUCCESS' ? 'bg-emerald-500 text-white' : 'bg-slate-300 dark:bg-slate-700 text-slate-500 dark:text-slate-400 cursor-not-allowed shadow-none'}
+              `}
+           >
+              {depositStatus === 'IDLE' && (
+                  <>
+                     <Wallet size={18} />
+                     {t.confirmAction}
+                  </>
+              )}
+              {depositStatus === 'APPROVING' && (
+                  <>
+                     <Loader2 size={18} className="animate-spin" />
+                     {t.approving}
+                  </>
+              )}
+              {depositStatus === 'DEPOSITING' && (
+                  <>
+                     <Loader2 size={18} className="animate-spin" />
+                     {t.depositing}
+                  </>
+              )}
+              {depositStatus === 'SUCCESS' && (
+                  <>
+                     <CheckCircle size={18} />
+                     {t.depositSuccess}
+                  </>
+              )}
+           </button>
+        </div>
+      </div>
+    );
+  };
+
+  const renderWithdrawView = () => {
+    const withVal = parseFloat(withdrawAmount);
+    const isWithdrawValid = !isNaN(withVal) && withVal > 0 && withVal <= balance;
+
+    return (
+      <div className="h-full flex flex-col p-4 bg-slate-50 dark:bg-slate-900 animate-in slide-in-from-right duration-200">
+        <div className="flex items-center gap-3 mb-6">
+          <button onClick={() => setView('MAIN')} className="p-2 -ml-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full dark:text-white">
+            <ChevronLeft size={24} />
+          </button>
+          <h2 className="text-xl font-bold dark:text-white text-slate-900">{t.withdrawVaultTitle}</h2>
+        </div>
+
+        <div className="space-y-6">
+          <div>
+             <label className="text-xs dark:text-slate-400 text-slate-500 block mb-2 font-bold uppercase">{t.network}</label>
+             <div className="bg-white dark:bg-slate-800 border dark:border-slate-700 border-slate-200 rounded-xl p-4 flex justify-between items-center dark:text-white text-slate-900 shadow-sm">
+               <div className="flex items-center gap-3">
+                   <div className="w-6 h-6 rounded-full bg-[#2D374B] flex items-center justify-center">
+                      <div className="w-3 h-3 bg-[#12AAFF] rounded-full"></div>
+                   </div>
+                   <span className="font-bold">Arbitrum One</span>
+               </div>
+               <CheckCircle size={18} className="text-emerald-500" />
+             </div>
+          </div>
+
+          {/* Currency Selector */}
+          <div>
+             <label className="text-xs dark:text-slate-400 text-slate-500 block mb-2 font-bold uppercase">{t.currency}</label>
+             <div className="bg-white dark:bg-slate-800 border dark:border-slate-700 border-slate-200 rounded-xl p-4 flex items-center gap-3 shadow-sm opacity-80 cursor-not-allowed">
+                <div className="w-6 h-6 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-500">
+                   <Coins size={14} />
+                </div>
+                <div className="flex-1 font-bold dark:text-white text-slate-900">USDC</div>
+                <CheckCircle size={18} className="text-emerald-500" />
+             </div>
+           </div>
+
+          <div>
+             <div className="flex justify-between mb-2">
+               <label className="text-xs dark:text-slate-400 text-slate-500 font-bold uppercase">{t.amount}</label>
+               <span className="text-xs dark:text-slate-400 text-slate-500">{t.avail}: <span className="dark:text-white text-slate-900 font-mono">{balance.toFixed(2)}</span></span>
+             </div>
+             <div className="relative">
+               <input 
+                 type="text" 
+                 inputMode="decimal"
+                 value={withdrawAmount}
+                 onChange={handleWithdrawChange}
+                 placeholder={t.quantity}
+                 disabled={withdrawStatus !== 'IDLE'}
+                 className="w-full bg-white dark:bg-slate-800 border dark:border-slate-700 border-slate-200 rounded-xl p-4 dark:text-white text-slate-900 font-mono focus:border-indigo-500 outline-none pr-16 text-lg"
+               />
+               <button 
+                 onClick={() => setWithdrawAmount(balance.toString())}
+                 className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-indigo-500"
+                 disabled={withdrawStatus !== 'IDLE'}
+               >
+                 {t.max}
+               </button>
+             </div>
+          </div>
+
+           {/* Info Card */}
+           <div className="bg-indigo-50 dark:bg-slate-800/50 p-4 rounded-xl border border-indigo-100 dark:border-slate-700">
+              <div className="flex gap-2">
+                  <Shield size={16} className="text-indigo-500 shrink-0 mt-0.5" />
+                  <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                     Withdrawals interact directly with the Vault contract. Funds will be returned to your connected wallet address: <span className="font-mono">{walletAddress}</span>
+                  </p>
+              </div>
+           </div>
+
+          <button 
+            onClick={handleWeb3Withdraw}
+            disabled={!isWithdrawValid || withdrawStatus !== 'IDLE'}
+            className={`w-full py-4 rounded-xl font-bold transition-all active:scale-95 flex items-center justify-center gap-2 shadow-lg
+              ${isWithdrawValid && withdrawStatus === 'IDLE' 
+                ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-500/20' 
+                : withdrawStatus === 'SUCCESS' ? 'bg-emerald-500 text-white' : 'bg-slate-300 dark:bg-slate-700 text-slate-500 dark:text-slate-400 cursor-not-allowed shadow-none'}
+            `}
+          >
+               {withdrawStatus === 'IDLE' && (
+                  <>
+                     <ArrowRightLeft size={18} />
+                     {t.confirmAction}
+                  </>
+              )}
+              {withdrawStatus === 'WITHDRAWING' && (
+                  <>
+                     <Loader2 size={18} className="animate-spin" />
+                     {t.withdrawing}
+                  </>
+              )}
+              {withdrawStatus === 'SUCCESS' && (
+                  <>
+                     <CheckCircle size={18} />
+                     {t.withdrawSuccess}
+                  </>
+              )}
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  const renderFillHistoryView = () => (
+    <div className="h-full flex flex-col bg-slate-50 dark:bg-slate-900 animate-in slide-in-from-right duration-200">
+      <div className="flex items-center gap-3 p-4 border-b dark:border-slate-800 border-slate-200 sticky top-0 bg-slate-50 dark:bg-slate-900 z-10">
+        <button onClick={() => setView('MAIN')} className="p-2 -ml-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full dark:text-white">
+          <ChevronLeft size={24} />
+        </button>
+        <h2 className="text-lg font-bold dark:text-white text-slate-900">{t.history}</h2>
+      </div>
+      <div className="flex-1 overflow-y-auto no-scrollbar p-4 space-y-3 pb-24">
+        {fillHistory.length === 0 ? (
+           <div className="text-center dark:text-slate-500 text-slate-400 mt-10">No transactions yet</div>
+        ) : (
+           fillHistory.map((fill) => (
+             <div key={fill.id} className="bg-white dark:bg-slate-800 border dark:border-slate-700 border-slate-200 p-4 rounded-xl shadow-sm">
+               <div className="flex justify-between items-start mb-2">
+                  <div>
+                    <div className="font-bold dark:text-white text-slate-900 flex items-center gap-2">
+                      {fill.symbol} 
+                      <span className={`text-[10px] px-1.5 rounded ${fill.side === Side.LONG ? 'bg-emerald-500/20 text-emerald-500' : 'bg-rose-500/20 text-rose-500'}`}>
+                         {fill.side === Side.LONG ? t.long.split('/')[0] : t.short.split('/')[0]}
+                      </span>
+                    </div>
+                    <div className="text-xs dark:text-slate-400 text-slate-500 mt-1 font-mono">
+                      {new Date(fill.timestamp).toLocaleString()}
+                    </div>
+                  </div>
+               </div>
+               
+               <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-xs dark:text-slate-400 text-slate-500 pt-2 border-t dark:border-slate-700/50 border-slate-100 mt-2">
+                 <div className="flex justify-between">
+                    <span>{t.tradeHistoryFields.price}</span>
+                    <span className="dark:text-slate-200 text-slate-700 font-mono">{fill.price.toFixed(2)}</span>
+                 </div>
+                 <div className="flex justify-between">
+                    <span>{t.tradeHistoryFields.qty}</span>
+                    <span className="dark:text-slate-200 text-slate-700 font-mono">{fill.size}</span>
+                 </div>
+                 <div className="flex justify-between">
+                    <span>{t.tradeHistoryFields.value}</span>
+                    <span className="dark:text-slate-200 text-slate-700 font-mono">{fill.value.toFixed(2)}</span>
+                 </div>
+                 <div className="flex justify-between">
+                    <span>{t.tradeHistoryFields.fee}</span>
+                    <span className="dark:text-slate-200 text-slate-700 font-mono">{fill.fee.toFixed(2)}</span>
+                 </div>
+                 <div className="flex justify-between col-span-2">
+                    <span>{t.tradeHistoryFields.realizedPnl}</span>
+                    <span className={`font-mono font-bold ${fill.realizedPnl >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                        {fill.realizedPnl.toFixed(2)}
+                    </span>
+                 </div>
+               </div>
+             </div>
+           ))
+        )}
+      </div>
+    </div>
+  );
+
+  const renderTransferHistoryView = () => (
+    <div className="h-full flex flex-col bg-slate-50 dark:bg-slate-900 animate-in slide-in-from-right duration-200">
+      <div className="flex items-center gap-3 p-4 border-b dark:border-slate-800 border-slate-200 sticky top-0 bg-slate-50 dark:bg-slate-900 z-10">
+        <button onClick={() => setView('MAIN')} className="p-2 -ml-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full dark:text-white">
+          <ChevronLeft size={24} />
+        </button>
+        <h2 className="text-lg font-bold dark:text-white text-slate-900">{t.transfers}</h2>
+      </div>
+      <div className="flex-1 overflow-y-auto no-scrollbar p-4 space-y-3 pb-24">
+        {transferHistory.length === 0 ? (
+           <div className="text-center dark:text-slate-500 text-slate-400 mt-10">No records yet</div>
+        ) : (
+           transferHistory.map((item) => (
+             <div key={item.id} className="bg-white dark:bg-slate-800 border dark:border-slate-700 border-slate-200 p-4 rounded-xl shadow-sm">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-full ${item.type === 'DEPOSIT' ? 'bg-emerald-500/20 text-emerald-500' : 'bg-rose-500/20 text-rose-500'}`}>
+                      {item.type === 'DEPOSIT' ? <ArrowDownLeft size={20} /> : <ArrowUpRight size={20} />}
+                    </div>
+                    <div>
+                      <div className="font-bold dark:text-white text-slate-900 text-sm">
+                        {item.type === 'DEPOSIT' ? 'Deposit' : 'Withdraw'} USDC
+                      </div>
+                      <div className="text-xs dark:text-slate-500 text-slate-400">
+                        {new Date(item.timestamp).toLocaleString()}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-mono font-bold dark:text-white text-slate-900">
+                      {item.type === 'DEPOSIT' ? '+' : '-'}{item.amount.toFixed(2)}
+                    </div>
+                    <div className={`text-[10px] font-bold tracking-wider mt-0.5 ${
+                      item.status === 'COMPLETED' ? 'text-emerald-500' : 
+                      item.status === 'PENDING' ? 'text-amber-500' : 
+                      'text-slate-500'
+                    }`}>
+                      {t.transferStatuses[item.status]}
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="mt-3 pt-2 border-t dark:border-slate-700/50 border-slate-100 flex items-center justify-between">
+                   <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-[10px] dark:text-slate-300 text-slate-600 font-medium">
+                      {item.network}
+                   </div>
+                   <a 
+                     href={`https://arbiscan.io/tx/${item.id}`} 
+                     target="_blank" 
+                     rel="noopener noreferrer" 
+                     className="text-indigo-500 hover:text-indigo-400 flex items-center gap-1 text-[10px] font-bold"
+                   >
+                     Explorer <ExternalLink size={10} />
+                   </a>
+                </div>
+             </div>
+           ))
+        )}
+      </div>
+    </div>
+  );
+
+  const renderSettingsView = () => (
+    <div className="h-full flex flex-col bg-slate-50 dark:bg-slate-900 animate-in slide-in-from-right duration-200">
+      <div className="flex items-center gap-3 p-4 border-b dark:border-slate-800 border-slate-200 sticky top-0 bg-slate-50 dark:bg-slate-900 z-10">
+        <button onClick={() => setView('MAIN')} className="p-2 -ml-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full dark:text-white">
+          <ChevronLeft size={24} />
+        </button>
+        <h2 className="text-lg font-bold dark:text-white text-slate-900">{t.settings}</h2>
+      </div>
+      <div className="p-4 space-y-6">
+         {/* Position Mode */}
+         <div>
+            <label className="text-xs dark:text-slate-400 text-slate-500 block mb-2 font-bold uppercase tracking-wider">{t.positionMode}</label>
+            <div className="bg-white dark:bg-slate-800 rounded-xl overflow-hidden border dark:border-slate-700 border-slate-200">
+                <div onClick={() => onSetPositionMode(PositionMode.ONE_WAY)} className="p-4 flex justify-between items-center cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 border-b dark:border-slate-700 border-slate-100">
+                    <div className="flex items-center gap-3">
+                        <ArrowRight size={18} className="text-slate-400" />
+                        <span className="dark:text-white text-slate-900">{t.oneWayMode}</span>
+                    </div>
+                    {positionMode === PositionMode.ONE_WAY && <CheckCircle size={18} className="text-emerald-500" />}
+                </div>
+                <div onClick={() => onSetPositionMode(PositionMode.HEDGE)} className="p-4 flex justify-between items-center cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700">
+                    <div className="flex items-center gap-3">
+                        <ArrowLeftRight size={18} className="text-slate-400" />
+                        <span className="dark:text-white text-slate-900">{t.hedgeMode}</span>
+                    </div>
+                    {positionMode === PositionMode.HEDGE && <CheckCircle size={18} className="text-emerald-500" />}
+                </div>
+            </div>
+         </div>
+
+         {/* Language */}
+         <div>
+            <label className="text-xs dark:text-slate-400 text-slate-500 block mb-2 font-bold uppercase tracking-wider">{t.language}</label>
+            <div className="bg-white dark:bg-slate-800 rounded-xl overflow-hidden border dark:border-slate-700 border-slate-200">
+               <div onClick={() => setLanguage('en')} className="p-4 flex justify-between items-center cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 border-b dark:border-slate-700 border-slate-100">
+                  <div className="flex items-center gap-3">
+                     <span className="text-xl">🇺🇸</span>
+                     <span className="dark:text-white text-slate-900">English</span>
+                  </div>
+                  {language === 'en' && <CheckCircle size={18} className="text-emerald-500" />}
+               </div>
+               <div onClick={() => setLanguage('zh-CN')} className="p-4 flex justify-between items-center cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 border-b dark:border-slate-700 border-slate-100">
+                  <div className="flex items-center gap-3">
+                     <span className="text-xl">🇨🇳</span>
+                     <span className="dark:text-white text-slate-900">简体中文</span>
+                  </div>
+                  {language === 'zh-CN' && <CheckCircle size={18} className="text-emerald-500" />}
+               </div>
+               <div onClick={() => setLanguage('zh-TW')} className="p-4 flex justify-between items-center cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700">
+                  <div className="flex items-center gap-3">
+                     <span className="text-xl">🇭🇰</span>
+                     <span className="dark:text-white text-slate-900">繁體中文</span>
+                  </div>
+                  {language === 'zh-TW' && <CheckCircle size={18} className="text-emerald-500" />}
+               </div>
+            </div>
+         </div>
+
+         {/* Theme */}
+         <div>
+            <label className="text-xs dark:text-slate-400 text-slate-500 block mb-2 font-bold uppercase tracking-wider">{t.theme}</label>
+            <div className="bg-white dark:bg-slate-800 rounded-xl overflow-hidden border dark:border-slate-700 border-slate-200">
+               <div onClick={() => setTheme('dark')} className="p-4 flex justify-between items-center cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 border-b dark:border-slate-700 border-slate-100">
+                  <div className="flex items-center gap-3">
+                     <Moon size={18} className="dark:text-indigo-400 text-slate-500" />
+                     <span className="dark:text-white text-slate-900">{t.dark}</span>
+                  </div>
+                  {theme === 'dark' && <CheckCircle size={18} className="text-emerald-500" />}
+               </div>
+               <div onClick={() => setTheme('light')} className="p-4 flex justify-between items-center cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700">
+                  <div className="flex items-center gap-3">
+                     <Sun size={18} className="text-amber-500" />
+                     <span className="dark:text-white text-slate-900">{t.light}</span>
+                  </div>
+                  {theme === 'light' && <CheckCircle size={18} className="text-emerald-500" />}
+               </div>
+            </div>
+         </div>
+      </div>
+    </div>
+  );
+
+  const renderCashFlowHistoryView = () => {
+    const filteredHistory = cashFlowHistory.filter(item => 
+        cashFlowFilter === 'ALL' || item.type === cashFlowFilter
+    );
+
+    return (
+        <div className="h-full flex flex-col bg-slate-50 dark:bg-slate-900 animate-in slide-in-from-right duration-200">
+          <div className="flex flex-col border-b dark:border-slate-800 border-slate-200 sticky top-0 bg-slate-50 dark:bg-slate-900 z-10">
+            <div className="flex items-center gap-3 p-4">
+                <button onClick={() => setView('MAIN')} className="p-2 -ml-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full dark:text-white">
+                <ChevronLeft size={24} />
+                </button>
+                <h2 className="text-lg font-bold dark:text-white text-slate-900">{t.funding}</h2>
+            </div>
+            
+            {/* Filter Dropdown */}
+            <div className="px-4 pb-3">
+                <div className="relative">
+                    <select 
+                        value={cashFlowFilter}
+                        onChange={(e) => setCashFlowFilter(e.target.value as CashFlowType | 'ALL')}
+                        className="w-full appearance-none bg-white dark:bg-slate-800 border dark:border-slate-700 border-slate-200 rounded-xl py-3 px-4 pl-10 text-sm font-medium dark:text-white text-slate-900 focus:outline-none focus:border-indigo-500 cursor-pointer shadow-sm"
+                    >
+                        <option value="ALL">{t.all}</option>
+                        <option value="TRANSACTION_FEE">{t.cashFlowTypes.TRANSACTION_FEE}</option>
+                        <option value="FUNDING_FEE">{t.cashFlowTypes.FUNDING_FEE}</option>
+                        <option value="REALIZED_PNL">{t.cashFlowTypes.REALIZED_PNL}</option>
+                        <option value="LIQUIDATION_FEE">{t.cashFlowTypes.LIQUIDATION_FEE}</option>
+                    </select>
+                    <Filter size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                    <ChevronRight size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 rotate-90 pointer-events-none" />
+                </div>
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto no-scrollbar p-4 space-y-3 pb-24">
+            {filteredHistory.length === 0 ? (
+               <div className="text-center dark:text-slate-500 text-slate-400 mt-10">No records found</div>
+            ) : (
+               filteredHistory.map((item) => (
+                 <div key={item.id} className="bg-white dark:bg-slate-800 border dark:border-slate-700 border-slate-200 p-4 rounded-xl flex items-center justify-between shadow-sm">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                          <span className="font-bold dark:text-white text-slate-900 text-sm">
+                            {t.cashFlowTypes[item.type]}
+                          </span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs">
+                         <span className="dark:text-slate-400 text-slate-500 font-mono">{new Date(item.timestamp).toLocaleString()}</span>
+                         <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-600"></span>
+                         <span className="dark:text-slate-300 text-slate-600 font-medium">{item.symbol}</span>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                       <div className={`font-mono font-bold text-base ${item.amount >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                         {item.amount >= 0 ? '+' : ''}{item.amount.toFixed(4)}
+                       </div>
+                       <div className="text-[10px] dark:text-slate-500 text-slate-400 mt-0.5">USDC</div>
+                    </div>
+                 </div>
+               ))
+            )}
+          </div>
+        </div>
+    );
+  };
+
   if (view === 'DEPOSIT') return renderDepositView();
   if (view === 'WITHDRAW') return renderWithdrawView();
   if (view === 'FILL_HISTORY') return renderFillHistoryView();
@@ -749,28 +944,43 @@ export const AccountView: React.FC<AccountViewProps> = ({
 
       {/* Menu List */}
       <div className="dark:bg-slate-800 bg-white rounded-xl overflow-hidden border dark:border-slate-700 border-slate-200 shadow-sm">
-        <div onClick={() => setView('FILL_HISTORY')} className="flex items-center justify-between p-4 dark:hover:bg-slate-700/50 hover:bg-slate-50 cursor-pointer border-b dark:border-slate-700 border-slate-100">
+        <div 
+          onClick={() => setView('FILL_HISTORY')}
+          className="flex items-center justify-between p-4 dark:hover:bg-slate-700/50 hover:bg-slate-50 cursor-pointer border-b dark:border-slate-700 border-slate-100"
+        >
            <div className="flex items-center gap-3">
              <History size={18} className="dark:text-slate-400 text-slate-500" />
              <span className="text-sm font-medium dark:text-slate-200 text-slate-800">{t.history}</span>
            </div>
            <div className="text-slate-400">›</div>
         </div>
-        <div onClick={() => setView('TRANSFER_HISTORY')} className="flex items-center justify-between p-4 dark:hover:bg-slate-700/50 hover:bg-slate-50 cursor-pointer border-b dark:border-slate-700 border-slate-100">
+
+        <div 
+          onClick={() => setView('TRANSFER_HISTORY')}
+          className="flex items-center justify-between p-4 dark:hover:bg-slate-700/50 hover:bg-slate-50 cursor-pointer border-b dark:border-slate-700 border-slate-100"
+        >
            <div className="flex items-center gap-3">
              <ArrowRightLeft size={18} className="dark:text-slate-400 text-slate-500" />
              <span className="text-sm font-medium dark:text-slate-200 text-slate-800">{t.transfers}</span>
            </div>
            <div className="text-slate-400">›</div>
         </div>
-        <div onClick={() => setView('CASH_FLOW_HISTORY')} className="flex items-center justify-between p-4 dark:hover:bg-slate-700/50 hover:bg-slate-50 cursor-pointer border-b dark:border-slate-700 border-slate-100">
+        
+        <div 
+          onClick={() => setView('CASH_FLOW_HISTORY')}
+          className="flex items-center justify-between p-4 dark:hover:bg-slate-700/50 hover:bg-slate-50 cursor-pointer border-b dark:border-slate-700 border-slate-100"
+        >
            <div className="flex items-center gap-3">
              <Coins size={18} className="dark:text-slate-400 text-slate-500" />
              <span className="text-sm font-medium dark:text-slate-200 text-slate-800">{t.funding}</span>
            </div>
            <div className="text-slate-400">›</div>
         </div>
-        <div onClick={() => setView('SETTINGS')} className="flex items-center justify-between p-4 dark:hover:bg-slate-700/50 hover:bg-slate-50 cursor-pointer">
+        
+        <div 
+          onClick={() => setView('SETTINGS')}
+          className="flex items-center justify-between p-4 dark:hover:bg-slate-700/50 hover:bg-slate-50 cursor-pointer"
+        >
            <div className="flex items-center gap-3">
              <Settings size={18} className="dark:text-slate-400 text-slate-500" />
              <span className="text-sm font-medium dark:text-slate-200 text-slate-800">{t.settings}</span>
@@ -779,7 +989,11 @@ export const AccountView: React.FC<AccountViewProps> = ({
         </div>
       </div>
       
-      <div onClick={onDisconnect} className="flex items-center justify-center p-4 mt-6 text-rose-500 font-bold cursor-pointer bg-rose-500/5 hover:bg-rose-500/10 border border-rose-500/20 rounded-xl transition-all">
+      {/* Logout Button */}
+      <div 
+         onClick={onDisconnect}
+         className="flex items-center justify-center p-4 mt-6 text-rose-500 font-bold cursor-pointer bg-rose-500/5 hover:bg-rose-500/10 border border-rose-500/20 rounded-xl transition-all"
+      >
          <LogOut size={18} className="mr-2" />
          {t.disconnect}
       </div>
@@ -787,6 +1001,7 @@ export const AccountView: React.FC<AccountViewProps> = ({
       <div className="mt-8 text-center">
          <p className="text-xs text-slate-500">GoldenDex Perp v1.0.0</p>
       </div>
+
     </div>
   );
 };
