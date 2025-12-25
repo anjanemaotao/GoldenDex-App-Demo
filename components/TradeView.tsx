@@ -54,6 +54,10 @@ export const TradeView: React.FC<TradeViewProps> = ({
   const [activeBookTab, setActiveBookTab] = useState<'book' | 'trades'>('book');
   const [sizeSliderValue, setSizeSliderValue] = useState<number>(0);
   
+  // Validation states
+  const [amountError, setAmountError] = useState(false);
+  const [priceError, setPriceError] = useState(false);
+  
   const [countdown, setCountdown] = useState<string>('00:59:59');
 
   const changePercent = ((currentPrice - currentMarket.lastPrice * 0.98) / (currentMarket.lastPrice * 0.98)) * 100;
@@ -92,12 +96,29 @@ export const TradeView: React.FC<TradeViewProps> = ({
   const maxBuyUSDC = balance * leverage;
 
   const handleTrade = (side: Side) => {
+    let hasError = false;
+
+    // Validate Price (Limit only)
+    if (orderType === 'LIMIT' && (!limitPrice || isNaN(parseFloat(limitPrice)) || parseFloat(limitPrice) <= 0)) {
+      setPriceError(true);
+      hasError = true;
+    }
+
+    // Validate Amount
+    if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
+      setAmountError(true);
+      hasError = true;
+    }
+
+    if (hasError) return;
+
     let size = parseFloat(amount);
-    if (isNaN(size) || size <= 0) return;
     if (sizeUnit === 'USDC') size = size / executionPrice;
     onPlaceOrder(side, size, executionPrice, orderType, marginMode);
     setAmount('');
     setSizeSliderValue(0);
+    setAmountError(false);
+    setPriceError(false);
   };
 
   const longLiqPrice = executionPrice * (1 - 1/leverage);
@@ -244,7 +265,7 @@ export const TradeView: React.FC<TradeViewProps> = ({
                 <button onClick={() => setActiveBookTab('trades')} className={`flex-1 py-2 text-[10px] font-bold transition-colors border-b-2 ${activeBookTab === 'trades' ? 'border-indigo-500 text-indigo-500' : 'border-transparent text-slate-400'}`}>{t.tabRecentTrades}</button>
              </div>
              <div className="flex-1 overflow-hidden p-1">
-                {activeBookTab === 'book' ? <OrderBook currentPrice={currentPrice} lang={lang} onPriceSelect={(p) => setLimitPrice(p)} markPrice={currentPrice * 1.0001} /> : (
+                {activeBookTab === 'book' ? <OrderBook currentPrice={currentPrice} lang={lang} onPriceSelect={(p) => { setLimitPrice(p); setPriceError(false); }} markPrice={currentPrice * 1.0001} /> : (
                    <div className="h-full overflow-y-auto no-scrollbar px-1">
                       <div className="grid grid-cols-2 text-[9px] dark:text-slate-500 text-slate-400 mb-1"><span>{t.price}</span><span className="text-right">{t.qty}</span></div>
                       {marketTrades.map((trade) => (
@@ -265,14 +286,23 @@ export const TradeView: React.FC<TradeViewProps> = ({
               </div>
 
               <div className="flex dark:bg-slate-800 bg-slate-100 rounded-lg p-0.5 mb-3">
-                 <button onClick={() => setOrderType('MARKET')} className={`flex-1 py-1 text-[10px] font-bold rounded-md ${orderType === 'MARKET' ? 'dark:bg-slate-600 bg-white dark:text-white text-slate-900 shadow' : 'text-slate-500'}`}>{t.market}</button>
+                 <button onClick={() => { setOrderType('MARKET'); setPriceError(false); }} className={`flex-1 py-1 text-[10px] font-bold rounded-md ${orderType === 'MARKET' ? 'dark:bg-slate-600 bg-white dark:text-white text-slate-900 shadow' : 'text-slate-500'}`}>{t.market}</button>
                  <button onClick={() => setOrderType('LIMIT')} className={`flex-1 py-1 text-[10px] font-bold rounded-md ${orderType === 'LIMIT' ? 'dark:bg-slate-600 bg-white dark:text-white text-slate-900 shadow' : 'text-slate-500'}`}>{t.limit}</button>
               </div>
 
               <div className="mb-3">
                  <label className="text-[10px] text-slate-500 block mb-1">{t.price}</label>
                  <div className="relative">
-                     <input type="text" value={orderType === 'MARKET' ? `${t.market}` : limitPrice} onChange={(e) => setLimitPrice(e.target.value)} disabled={orderType === 'MARKET'} className={`w-full dark:bg-slate-800 bg-slate-50 border dark:border-slate-700 border-slate-200 rounded-lg py-2.5 px-3 text-sm font-mono focus:border-indigo-500 outline-none ${orderType === 'MARKET' ? 'text-slate-400' : 'dark:text-white text-slate-900'}`} />
+                     <input 
+                        type="text" 
+                        value={orderType === 'MARKET' ? `${t.market}` : limitPrice} 
+                        onChange={(e) => {
+                          setLimitPrice(e.target.value);
+                          setPriceError(false);
+                        }} 
+                        disabled={orderType === 'MARKET'} 
+                        className={`w-full dark:bg-slate-800 bg-slate-50 border rounded-lg py-2.5 px-3 text-sm font-mono outline-none transition-colors ${priceError ? 'border-rose-500 ring-1 ring-rose-500' : 'dark:border-slate-700 border-slate-200 focus:border-indigo-500'} ${orderType === 'MARKET' ? 'text-slate-400' : 'dark:text-white text-slate-900'}`} 
+                      />
                      {orderType === 'LIMIT' && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-500">USDC</span>}
                  </div>
               </div>
@@ -280,7 +310,16 @@ export const TradeView: React.FC<TradeViewProps> = ({
               <div className="mb-6">
                  <div className="flex justify-between mb-1"><label className="text-[10px] text-slate-500">{t.size}</label><span className="text-[10px] text-slate-500">{t.avail}: <span className="dark:text-white text-slate-900 font-mono">{balance.toFixed(2)}</span> USDC</span></div>
                  <div className="relative">
-                     <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder={t.quantity} className="w-full dark:bg-slate-800 bg-slate-50 border dark:border-slate-700 border-slate-200 rounded-lg py-2.5 pl-3 pr-16 text-sm font-mono dark:text-white text-slate-900 outline-none focus:border-indigo-500" />
+                     <input 
+                        type="number" 
+                        value={amount} 
+                        onChange={(e) => {
+                          setAmount(e.target.value);
+                          setAmountError(false);
+                        }} 
+                        placeholder={t.quantity} 
+                        className={`w-full dark:bg-slate-800 bg-slate-50 border rounded-lg py-2.5 pl-3 pr-16 text-sm font-mono dark:text-white text-slate-900 outline-none transition-colors ${amountError ? 'border-rose-500 ring-1 ring-rose-500' : 'dark:border-slate-700 border-slate-200 focus:border-indigo-500'}`} 
+                      />
                      <div className="absolute right-0 top-0 bottom-0 flex items-center pr-2">
                         <select value={sizeUnit} onChange={(e) => setSizeUnit(e.target.value as any)} className="bg-transparent border-none text-[10px] font-bold focus:ring-0 cursor-pointer dark:text-white text-slate-900"><option value="XAU">XAU</option><option value="USDC">USDC</option></select>
                      </div>
@@ -292,6 +331,7 @@ export const TradeView: React.FC<TradeViewProps> = ({
                  <input type="range" min="0" max="100" step="1" value={sizeSliderValue} onChange={(e) => {
                     const val = parseInt(e.target.value);
                     setSizeSliderValue(val);
+                    setAmountError(false);
                     if (val === 0) setAmount('');
                     else setAmount(((sizeUnit === 'XAU' ? maxBuyXAU : maxBuyUSDC) * val / 100).toFixed(4));
                  }} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20" />

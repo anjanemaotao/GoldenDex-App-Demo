@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Wallet, CreditCard, ArrowRightLeft, Shield, Settings, History, ChevronLeft, Copy, CheckCircle, ExternalLink, ArrowDownLeft, ArrowUpRight, LogOut, User, Coins, Moon, Sun, Loader2, X, ChevronRight, Lock, Info, Filter, ArrowRight, ChevronDown } from 'lucide-react';
 import { FillRecord, TransferRecord, Side, Language, Theme, CashFlowRecord, CashFlowType, PositionMode } from '../types';
 import { TRANSLATIONS } from '../constants';
@@ -29,12 +29,28 @@ interface AccountViewProps {
 type ViewState = 'MAIN' | 'DEPOSIT' | 'WITHDRAW' | 'FILL_HISTORY' | 'TRANSFER_HISTORY' | 'SETTINGS' | 'CASH_FLOW_HISTORY';
 type LoginStep = 'INITIAL' | 'SELECT_WALLET' | 'CONNECTING' | 'SIGNING' | 'VERIFYING';
 
+const WITHDRAW_FEE = 0.5;
+
 const WALLETS = [
   { id: 'metamask', name: 'MetaMask', color: '#F6851B', icon: <svg viewBox="0 0 32 32" className="w-12 h-12" fill="none"><path d="M27.5 2.5L25.5 5.5L28.5 10.5L30.5 4.5L27.5 2.5Z" fill="#E17726" stroke="#E17726" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M4.5 2.5L7.5 5.5L3.5 10.5L1.5 4.5L4.5 2.5Z" fill="#E17726" stroke="#E17726" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M16 23.5L9 28.5L23 28.5L16 23.5Z" fill="#E17726" stroke="#E17726" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M9 11.5L5 17.5L9 28.5L16 23.5L23 28.5L27 17.5L23 11.5L16 16.5L9 11.5Z" fill="#F6851B" stroke="#F6851B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg> },
   { id: 'walletconnect', name: 'WalletConnect', color: '#3B99FC', icon: <svg viewBox="0 0 32 32" className="w-12 h-12" fill="none"><path d="M26 11C23 8 19 6 16 6C13 6 9 8 6 11" stroke="#3B99FC" strokeWidth="3" strokeLinecap="round"/><circle cx="8" cy="18" r="3" fill="#3B99FC"/><circle cx="24" cy="18" r="3" fill="#3B99FC"/><path d="M16 21V26" stroke="#3B99FC" strokeWidth="3" strokeLinecap="round"/></svg> },
   { id: 'okx', name: 'OKX Wallet', color: '#000000', icon: <svg viewBox="0 0 32 32" className="w-12 h-12" fill="none"><rect width="32" height="32" rx="6" fill="currentColor" className="text-black dark:text-white"/><path d="M8 8H12V12H8V8Z" fill="currentColor" className="text-white dark:text-black"/><path d="M20 8H24V12H20V8Z" fill="currentColor" className="text-white dark:text-black"/><path d="M8 20H12V24H8V20Z" fill="currentColor" className="text-white dark:text-black"/><path d="M20 20H24V24H20V20Z" fill="currentColor" className="text-white dark:text-black"/><path d="M14 14H18V18H14V14Z" fill="currentColor" className="text-white dark:text-black"/></svg> },
   { id: 'binance', name: 'Binance Wallet', color: '#F0B90B', icon: <svg viewBox="0 0 32 32" className="w-12 h-12" fill="none"><path d="M16 6L22 12L16 18L10 12L16 6Z" fill="#F0B90B"/><path d="M10 12L4 18L10 24L16 18L10 12Z" fill="#F0B90B"/><path d="M22 12L28 18L22 24L16 18L22 12Z" fill="#F0B90B"/><path d="M16 18L22 24L16 30L10 24L16 18Z" fill="#F0B90B"/><circle cx="16" cy="18" r="2" fill="#1e293b"/></svg> }
 ];
+
+const CURRENCIES = [
+  { id: 'USDC', name: 'USDC', color: 'indigo', icon: <Coins size={16} /> },
+  { id: 'USDT', name: 'USDT', color: 'emerald', icon: <Coins size={16} /> },
+  { id: 'ETH', name: 'ETH', color: 'blue', icon: <Coins size={16} /> },
+  { id: 'ARB', name: 'ARB', color: 'sky', icon: <Coins size={16} /> },
+];
+
+const EXCHANGE_RATES: Record<string, number> = {
+  'USDC': 1.0,
+  'USDT': 1.0,
+  'ETH': 2500.0,
+  'ARB': 0.85
+};
 
 export const AccountView: React.FC<AccountViewProps> = ({ 
   balance, equity, unrealizedPnL, totalPositionValue, externalWalletBalance, fillHistory, transferHistory, cashFlowHistory, onDeposit, onWithdraw, isConnected, onConnect, onDisconnect, language, setLanguage, theme, setTheme, positionMode, onSetPositionMode
@@ -46,14 +62,42 @@ export const AccountView: React.FC<AccountViewProps> = ({
   const [depositAmount, setDepositAmount] = useState('');
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [copied, setCopied] = useState(false);
-  const [depositStatus, setDepositStatus] = useState<'IDLE' | 'APPROVING' | 'DEPOSITING' | 'SUCCESS'>('IDLE');
+  const [depositStatus, setDepositStatus] = useState<'IDLE' | 'APPROVING' | 'DEPOSITING' | 'SWAPPING' | 'SUCCESS'>('IDLE');
   const [withdrawStatus, setWithdrawStatus] = useState<'IDLE' | 'WITHDRAWING' | 'SUCCESS'>('IDLE');
   
   const [cashFlowFilter, setCashFlowFilter] = useState<CashFlowType | 'ALL'>('ALL');
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
 
+  const [depositCurrency, setDepositCurrency] = useState(CURRENCIES[0]);
+  const [showCurrencyDropdown, setShowCurrencyDropdown] = useState(false);
+
   const t = TRANSLATIONS[language];
   const walletAddress = "0x71C7...9A23";
+
+  // Mock currency balances based on the prop for USDC
+  const mockBalances = useMemo(() => ({
+    'USDC': externalWalletBalance,
+    'USDT': 2450.50,
+    'ETH': 1.258,
+    'ARB': 850.00
+  }), [externalWalletBalance]);
+
+  const currentDepositBalance = mockBalances[depositCurrency.id as keyof typeof mockBalances] || 0;
+
+  // Reactively calculate estimated USDC for Deposit
+  const estimatedUsdc = useMemo(() => {
+    const val = parseFloat(depositAmount);
+    if (isNaN(val) || val <= 0) return 0;
+    const rate = EXCHANGE_RATES[depositCurrency.id] || 1.0;
+    return val * rate;
+  }, [depositAmount, depositCurrency]);
+
+  // Calculate estimated received for Withdraw
+  const estWithdrawReceived = useMemo(() => {
+    const val = parseFloat(withdrawAmount);
+    if (isNaN(val) || val <= WITHDRAW_FEE) return 0;
+    return val - WITHDRAW_FEE;
+  }, [withdrawAmount]);
 
   useEffect(() => {
     if (!isConnected) { setLoginStep('INITIAL'); setSelectedWallet(null); }
@@ -77,19 +121,31 @@ export const AccountView: React.FC<AccountViewProps> = ({
 
   const handleWeb3Deposit = async () => {
     const val = parseFloat(depositAmount);
-    if (isNaN(val) || val <= 0 || val > externalWalletBalance) return;
-    setDepositStatus('APPROVING');
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    if (isNaN(val) || val <= 0 || val > currentDepositBalance) return;
+    
+    // ETH doesn't require approval
+    if (depositCurrency.id !== 'ETH') {
+        setDepositStatus('APPROVING');
+        await new Promise(resolve => setTimeout(resolve, 1500));
+    }
+    
+    if (depositCurrency.id !== 'USDC') {
+        setDepositStatus('SWAPPING');
+        await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+    
     setDepositStatus('DEPOSITING');
     await new Promise(resolve => setTimeout(resolve, 2000));
-    onDeposit(val);
+    
+    onDeposit(estimatedUsdc);
+    
     setDepositStatus('SUCCESS');
     setTimeout(() => { setDepositStatus('IDLE'); setDepositAmount(''); setView('MAIN'); }, 1500);
   };
 
   const handleWeb3Withdraw = async () => {
     const val = parseFloat(withdrawAmount);
-    if (isNaN(val) || val <= 0 || val > balance) return;
+    if (isNaN(val) || val <= WITHDRAW_FEE || val > balance) return;
     setWithdrawStatus('WITHDRAWING');
     await new Promise(resolve => setTimeout(resolve, 2000));
     const success = onWithdraw(val);
@@ -99,8 +155,8 @@ export const AccountView: React.FC<AccountViewProps> = ({
     } else setWithdrawStatus('IDLE');
   };
 
-  const isDepositValid = !isNaN(parseFloat(depositAmount)) && parseFloat(depositAmount) > 0 && parseFloat(depositAmount) <= externalWalletBalance;
-  const isWithdrawValid = !isNaN(parseFloat(withdrawAmount)) && parseFloat(withdrawAmount) > 0 && parseFloat(withdrawAmount) <= balance;
+  const isDepositValid = !isNaN(parseFloat(depositAmount)) && parseFloat(depositAmount) > 0 && parseFloat(depositAmount) <= currentDepositBalance;
+  const isWithdrawValid = !isNaN(parseFloat(withdrawAmount)) && parseFloat(withdrawAmount) > WITHDRAW_FEE && parseFloat(withdrawAmount) <= balance;
 
   if (!isConnected) {
     return (
@@ -151,7 +207,7 @@ export const AccountView: React.FC<AccountViewProps> = ({
                         <div className="w-8 h-8 rounded-full border p-1.5 bg-white flex items-center justify-center">{selectedWallet.icon}</div>
                         <h3 className="font-bold dark:text-white text-sm">{t.connection.sigRequest}</h3>
                     </div>
-                    <div className="bg-slate-50 dark:bg-slate-900 rounded-lg p-3 mb-6 font-mono text-[10px] dark:text-slate-400 leading-relaxed">
+                    <div className="bg-slate-50 dark:bg-slate-900 rounded-lg p-3 mb-6 font-mono text-[10px] dark:text-slate-400 female-relaxed">
                         {t.connection.msgToSign}:<br/>
                         Welcome to GoldenDex.<br/>By signing this message, you agree to the Terms of Service.
                     </div>
@@ -189,9 +245,90 @@ export const AccountView: React.FC<AccountViewProps> = ({
           </p>
         </div>
         <div className="space-y-3"><label className="text-xs font-bold text-slate-500 uppercase">{t.network}</label><div className="dark:bg-slate-800 bg-white border dark:border-slate-700 border-slate-200 rounded-2xl p-4 flex items-center justify-between"><div className="flex items-center gap-3"><div className="w-5 h-5 rounded-full bg-blue-500 border-4 border-slate-800"></div><span className="font-bold dark:text-white text-slate-900">Arbitrum One</span></div><CheckCircle size={16} className="text-emerald-500" /></div></div>
-        <div className="space-y-3"><label className="text-xs font-bold text-slate-500 uppercase">{t.currency}</label><div className="dark:bg-slate-800 bg-white border dark:border-slate-700 border-slate-200 rounded-2xl p-4 flex items-center gap-3"><div className="w-8 h-8 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-500"><Coins size={16} /></div><span className="font-bold dark:text-white text-slate-900">USDC</span></div></div>
-        <div className="space-y-3"><div className="flex justify-between items-center"><label className="text-xs font-bold text-slate-500 uppercase">{t.amount}</label><span className="text-[11px] text-slate-500">{t.walletBalance}: <span className="dark:text-white text-slate-900 font-mono font-bold">{externalWalletBalance.toFixed(2)}</span></span></div><div className="relative"><input type="text" value={depositAmount} onChange={handleDepositChange} placeholder={t.quantity} className="w-full bg-white dark:bg-slate-800 border dark:border-slate-700 border-slate-200 rounded-2xl p-4 pr-24 text-sm font-mono outline-none focus:border-indigo-500 dark:text-white" /><div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-3"><button onClick={() => setDepositAmount(externalWalletBalance.toString())} className="text-xs font-bold text-indigo-500">{t.max}</button><span className="text-xs font-bold text-slate-500 uppercase">USDC</span></div></div></div>
-        <button onClick={handleWeb3Deposit} disabled={!isDepositValid || depositStatus !== 'IDLE'} className={`w-full py-4 mt-4 rounded-2xl font-bold transition-all shadow-lg flex items-center justify-center gap-3 ${isDepositValid && depositStatus === 'IDLE' ? 'bg-[#2D3748] dark:bg-slate-800 text-white' : 'bg-slate-200 dark:bg-slate-700/30 text-slate-400 cursor-not-allowed shadow-none'}`}>{depositStatus === 'IDLE' ? <><Wallet size={18} /> {t.confirm}</> : <Loader2 size={18} className="animate-spin" />}</button>
+        
+        <div className="space-y-3 relative">
+          <label className="text-xs font-bold text-slate-500 uppercase">{t.currency}</label>
+          <div 
+            onClick={() => setShowCurrencyDropdown(!showCurrencyDropdown)}
+            className="dark:bg-slate-800 bg-white border dark:border-slate-700 border-slate-200 rounded-2xl p-4 flex items-center justify-between cursor-pointer active:bg-slate-100 dark:active:bg-slate-700 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-${depositCurrency.color}-500 bg-${depositCurrency.color}-500/10`}>
+                {depositCurrency.icon}
+              </div>
+              <span className="font-bold dark:text-white text-slate-900">{depositCurrency.name}</span>
+            </div>
+            <ChevronDown size={18} className={`text-slate-400 transition-transform ${showCurrencyDropdown ? 'rotate-180' : ''}`} />
+          </div>
+
+          {showCurrencyDropdown && (
+            <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 border dark:border-slate-700 border-slate-200 rounded-xl shadow-xl overflow-hidden z-20 animate-in slide-in-from-top-2 duration-200">
+              {CURRENCIES.map(curr => (
+                <div 
+                  key={curr.id}
+                  onClick={() => {
+                    setDepositCurrency(curr);
+                    setShowCurrencyDropdown(false);
+                    setDepositAmount('');
+                  }}
+                  className={`p-4 flex items-center gap-3 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer ${depositCurrency.id === curr.id ? 'bg-slate-50 dark:bg-slate-700/50' : ''}`}
+                >
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-${curr.color}-500 bg-${curr.color}-500/10`}>
+                    {curr.icon}
+                  </div>
+                  <span className={`text-sm font-bold ${depositCurrency.id === curr.id ? 'text-indigo-500' : 'dark:text-white text-slate-900'}`}>{curr.name}</span>
+                  {depositCurrency.id === curr.id && <CheckCircle size={16} className="ml-auto text-indigo-500" />}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="space-y-3">
+          <div className="flex justify-between items-center">
+            <label className="text-xs font-bold text-slate-500 uppercase">{t.amount}</label>
+            <span className="text-[11px] text-slate-500">{t.walletBalance}: <span className="dark:text-white text-slate-900 font-mono font-bold">{currentDepositBalance.toFixed(depositCurrency.id === 'ETH' ? 4 : 2)}</span></span>
+          </div>
+          <div className="relative">
+            <input 
+              type="text" 
+              value={depositAmount} 
+              onChange={handleDepositChange} 
+              placeholder={t.quantity} 
+              className="w-full bg-white dark:bg-slate-800 border dark:border-slate-700 border-slate-200 rounded-2xl p-4 pr-24 text-sm font-mono outline-none focus:border-indigo-500 dark:text-white" 
+            />
+            <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-3">
+              <button onClick={() => setDepositAmount(currentDepositBalance.toString())} className="text-xs font-bold text-indigo-500">{t.max}</button>
+              <span className="text-xs font-bold text-slate-500 uppercase">{depositCurrency.name}</span>
+            </div>
+          </div>
+          
+          {depositCurrency.id !== 'USDC' && estimatedUsdc > 0 && (
+            <div className="px-1 flex items-center justify-between text-xs animate-in fade-in slide-in-from-top-1 duration-300">
+               <span className="text-slate-500 font-medium">{t.estReceived}</span>
+               <span className="text-indigo-500 font-bold font-mono">{estimatedUsdc.toFixed(2)} USDC</span>
+            </div>
+          )}
+        </div>
+        
+        <button 
+          onClick={handleWeb3Deposit} 
+          disabled={!isDepositValid || depositStatus !== 'IDLE'} 
+          className={`w-full py-4 mt-4 rounded-2xl font-bold transition-all shadow-lg flex items-center justify-center gap-3 ${isDepositValid && depositStatus === 'IDLE' ? 'bg-[#2D3748] dark:bg-slate-800 text-white active:scale-95' : 'bg-slate-200 dark:bg-slate-700/30 text-slate-400 cursor-not-allowed shadow-none'}`}
+        >
+          {depositStatus === 'IDLE' ? (
+            <>{depositCurrency.id === 'USDC' ? t.confirm : t.quickSwap}</>
+          ) : (
+            <div className="flex items-center gap-2">
+              <Loader2 size={18} className="animate-spin" />
+              <span className="text-xs uppercase tracking-widest">
+                {depositStatus === 'APPROVING' ? t.approving.replace('{currency}', depositCurrency.name).split('...')[0] : 
+                 depositStatus === 'SWAPPING' ? t.quickSwap : 
+                 t.depositing.split('...')[0]}
+              </span>
+            </div>
+          )}
+        </button>
       </div>
     </div>
   );
@@ -208,8 +345,35 @@ export const AccountView: React.FC<AccountViewProps> = ({
         </div>
         <div className="space-y-3"><label className="text-xs font-bold text-slate-500 uppercase">{t.network}</label><div className="dark:bg-slate-800 bg-white border dark:border-slate-700 border-slate-200 rounded-2xl p-4 flex items-center justify-between"><div className="flex items-center gap-3"><div className="w-5 h-5 rounded-full bg-blue-500 border-4 border-slate-800"></div><span className="font-bold dark:text-white text-slate-900">Arbitrum One</span></div><CheckCircle size={16} className="text-emerald-500" /></div></div>
         <div className="space-y-3"><label className="text-xs font-bold text-slate-500 uppercase">{t.currency}</label><div className="dark:bg-slate-800 bg-white border dark:border-slate-700 border-slate-200 rounded-2xl p-4 flex items-center gap-3"><div className="w-8 h-8 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-500"><Coins size={16} /></div><span className="font-bold dark:text-white text-slate-900">USDC</span></div></div>
-        <div className="space-y-3"><div className="flex justify-between items-center"><label className="text-xs font-bold text-slate-500 uppercase">{t.amount}</label><span className="text-[11px] text-slate-500">{t.avail}: <span className="dark:text-white text-slate-900 font-mono font-bold">{balance.toFixed(2)}</span></span></div><div className="relative"><input type="text" value={withdrawAmount} onChange={handleWithdrawChange} placeholder={t.quantity} className="w-full bg-white dark:bg-slate-800 border dark:border-slate-700 border-slate-200 rounded-2xl p-4 pr-16 text-sm font-mono outline-none focus:border-indigo-500 dark:text-white" /><button onClick={() => setWithdrawAmount(balance.toString())} className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-indigo-500">{t.max}</button></div></div>
-        <button onClick={handleWeb3Withdraw} disabled={!isWithdrawValid || withdrawStatus !== 'IDLE'} className={`w-full py-4 mt-4 rounded-2xl font-bold transition-all shadow-lg flex items-center justify-center gap-3 ${isWithdrawValid && withdrawStatus === 'IDLE' ? 'bg-[#2D3748] dark:bg-slate-800 text-white' : 'bg-slate-200 dark:bg-slate-700/30 text-slate-400 cursor-not-allowed shadow-none'}`}>{withdrawStatus === 'IDLE' ? <><ArrowRightLeft size={18} /> {t.confirm}</> : <Loader2 size={18} className="animate-spin" />}</button>
+        
+        <div className="space-y-3">
+          <div className="flex justify-between items-center"><label className="text-xs font-bold text-slate-500 uppercase">{t.amount}</label><span className="text-[11px] text-slate-500">{t.avail}: <span className="dark:text-white text-slate-900 font-mono font-bold">{balance.toFixed(2)}</span></span></div>
+          <div className="relative">
+            <input type="text" value={withdrawAmount} onChange={handleWithdrawChange} placeholder={t.quantity} className="w-full bg-white dark:bg-slate-800 border dark:border-slate-700 border-slate-200 rounded-2xl p-4 pr-16 text-sm font-mono outline-none focus:border-indigo-500 dark:text-white" />
+            <button onClick={() => setWithdrawAmount(balance.toString())} className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-indigo-500">{t.max}</button>
+          </div>
+          
+          {parseFloat(withdrawAmount) > 0 && (
+             <div className="space-y-2 p-1 animate-in fade-in slide-in-from-top-1 duration-300">
+               <div className="flex justify-between text-xs">
+                 <span className="text-slate-500">{t.withdrawFee}</span>
+                 <span className="text-slate-600 dark:text-slate-400 font-mono">{WITHDRAW_FEE.toFixed(1)} USDC</span>
+               </div>
+               <div className="flex justify-between text-xs font-bold">
+                 <span className="text-slate-500">{t.estReceived}</span>
+                 <span className="text-indigo-500 font-mono">{estWithdrawReceived.toFixed(2)} USDC</span>
+               </div>
+             </div>
+          )}
+        </div>
+
+        <button 
+          onClick={handleWeb3Withdraw} 
+          disabled={!isWithdrawValid || withdrawStatus !== 'IDLE'} 
+          className={`w-full py-4 mt-4 rounded-2xl font-bold transition-all shadow-lg flex items-center justify-center gap-3 ${isWithdrawValid && withdrawStatus === 'IDLE' ? 'bg-[#2D3748] dark:bg-slate-800 text-white' : 'bg-slate-200 dark:bg-slate-700/30 text-slate-400 cursor-not-allowed shadow-none'}`}
+        >
+          {withdrawStatus === 'IDLE' ? <><ArrowRightLeft size={18} /> {t.confirm}</> : <Loader2 size={18} className="animate-spin" />}
+        </button>
       </div>
     </div>
   );

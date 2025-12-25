@@ -290,13 +290,15 @@ const App: React.FC = () => {
   };
 
   const handleWithdraw = (amount: number) => {
+    const WITHDRAW_FEE = 0.5;
     if (balance < amount) return false;
+    const actualReceived = amount - WITHDRAW_FEE;
     setBalance(prev => prev - amount);
-    setExternalWalletBalance(prev => prev + amount);
+    setExternalWalletBalance(prev => prev + actualReceived);
     setTransferHistory(prev => [{ id: `tx-${Date.now()}`, type: 'WITHDRAW', amount, timestamp: Date.now(), status: 'COMPLETED', network: 'Arbitrum One' }, ...prev]);
     triggerNotification(
         t.appNotifications.withdraw.title,
-        t.appNotifications.withdraw.content.replace('{amount}', amount.toLocaleString()).replace('{address}', '0x71C7...9A23')
+        t.appNotifications.withdraw.content.replace('{amount}', actualReceived.toLocaleString()).replace('{address}', '0x71C7...9A23')
     );
     return true;
   };
