@@ -32,10 +32,30 @@ type LoginStep = 'INITIAL' | 'SELECT_WALLET' | 'CONNECTING' | 'SIGNING' | 'VERIF
 const WITHDRAW_FEE = 0.5;
 
 const WALLETS = [
-  { id: 'metamask', name: 'MetaMask', color: '#F6851B', icon: <svg viewBox="0 0 32 32" className="w-12 h-12" fill="none"><path d="M27.5 2.5L25.5 5.5L28.5 10.5L30.5 4.5L27.5 2.5Z" fill="#E17726" stroke="#E17726" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M4.5 2.5L7.5 5.5L3.5 10.5L1.5 4.5L4.5 2.5Z" fill="#E17726" stroke="#E17726" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M16 23.5L9 28.5L23 28.5L16 23.5Z" fill="#E17726" stroke="#E17726" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M9 11.5L5 17.5L9 28.5L16 23.5L23 28.5L27 17.5L23 11.5L16 16.5L9 11.5Z" fill="#F6851B" stroke="#F6851B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg> },
-  { id: 'walletconnect', name: 'WalletConnect', color: '#3B99FC', icon: <svg viewBox="0 0 32 32" className="w-12 h-12" fill="none"><path d="M26 11C23 8 19 6 16 6C13 6 9 8 6 11" stroke="#3B99FC" strokeWidth="3" strokeLinecap="round"/><circle cx="8" cy="18" r="3" fill="#3B99FC"/><circle cx="24" cy="18" r="3" fill="#3B99FC"/><path d="M16 21V26" stroke="#3B99FC" strokeWidth="3" strokeLinecap="round"/></svg> },
-  { id: 'okx', name: 'OKX Wallet', color: '#000000', icon: <svg viewBox="0 0 32 32" className="w-12 h-12" fill="none"><rect width="32" height="32" rx="6" fill="currentColor" className="text-black dark:text-white"/><path d="M8 8H12V12H8V8Z" fill="currentColor" className="text-white dark:text-black"/><path d="M20 8H24V12H20V8Z" fill="currentColor" className="text-white dark:text-black"/><path d="M8 20H12V24H8V20Z" fill="currentColor" className="text-white dark:text-black"/><path d="M20 20H24V24H20V20Z" fill="currentColor" className="text-white dark:text-black"/><path d="M14 14H18V18H14V14Z" fill="currentColor" className="text-white dark:text-black"/></svg> },
-  { id: 'binance', name: 'Binance Wallet', color: '#F0B90B', icon: <svg viewBox="0 0 32 32" className="w-12 h-12" fill="none"><path d="M16 6L22 12L16 18L10 12L16 6Z" fill="#F0B90B"/><path d="M10 12L4 18L10 24L16 18L10 12Z" fill="#F0B90B"/><path d="M22 12L28 18L22 24L16 18L22 12Z" fill="#F0B90B"/><path d="M16 18L22 24L16 30L10 24L16 18Z" fill="#F0B90B"/><circle cx="16" cy="18" r="2" fill="#1e293b"/></svg> }
+  { 
+    id: 'metamask', 
+    name: 'MetaMask', 
+    color: '#F6851B', 
+    icon: <img src="https://upload.wikimedia.org/wikipedia/commons/3/36/MetaMask_Fox.svg" className="w-full h-full object-contain" alt="MetaMask" /> 
+  },
+  { 
+    id: 'okx', 
+    name: 'OKX Wallet', 
+    color: '#000000', 
+    icon: <img src="https://s2.coinmarketcap.com/static/img/exchanges/64x64/294.png" className="w-full h-full object-contain rounded-lg" alt="OKX Wallet" /> 
+  },
+  { 
+    id: 'binance', 
+    name: 'Binance Wallet', 
+    color: '#F0B90B', 
+    icon: <img src="https://cryptologos.cc/logos/binance-coin-bnb-logo.svg?v=024" className="w-full h-full object-contain" alt="Binance Wallet" /> 
+  },
+  { 
+    id: 'walletconnect', 
+    name: 'WalletConnect', 
+    color: '#3B99FC', 
+    icon: <img src="https://raw.githubusercontent.com/WalletConnect/walletconnect-assets/master/Logo/Blue%20(Default)/Logo.svg" className="w-full h-full object-contain" alt="WalletConnect" /> 
+  }
 ];
 
 const CURRENCIES = [
@@ -70,9 +90,13 @@ export const AccountView: React.FC<AccountViewProps> = ({
 
   const [depositCurrency, setDepositCurrency] = useState(CURRENCIES[0]);
   const [showCurrencyDropdown, setShowCurrencyDropdown] = useState(false);
+  const [slippage, setSlippage] = useState('0.5');
 
   const t = TRANSLATIONS[language];
   const walletAddress = "0x71C7...9A23";
+
+  // Professional deep indigo color from screenshot
+  const BRAND_COLOR = "#4338ca"; 
 
   // Mock currency balances based on the prop for USDC
   const mockBalances = useMemo(() => ({
@@ -124,7 +148,7 @@ export const AccountView: React.FC<AccountViewProps> = ({
     if (isNaN(val) || val <= 0 || val > currentDepositBalance) return;
     
     // ETH doesn't require approval
-    if (depositCurrency.id !== 'ETH') {
+    if (depositCurrency.id !== 'ETH' && depositCurrency.id !== 'USDC') {
         setDepositStatus('APPROVING');
         await new Promise(resolve => setTimeout(resolve, 1500));
     }
@@ -171,13 +195,28 @@ export const AccountView: React.FC<AccountViewProps> = ({
         )}
 
         {loginStep === 'SELECT_WALLET' && (
-            <div className="absolute inset-0 z-20 flex items-end justify-center bg-black/60 backdrop-blur-sm">
-                <div className="bg-white dark:bg-slate-800 w-full rounded-t-[24px] p-6 shadow-2xl animate-in slide-in-from-bottom duration-300">
-                    <div className="flex justify-between items-center mb-6"><h2 className="text-lg font-bold dark:text-white text-slate-900">{t.connection.selectWallet}</h2><button onClick={() => setLoginStep('INITIAL')} className="p-1 dark:text-slate-400"><X size={20}/></button></div>
-                    <div className="space-y-3 pb-8">
+            <div className="absolute inset-0 z-20 flex items-end justify-center bg-slate-900/40 backdrop-blur-[6px] transition-all">
+                <div 
+                  className="bg-white dark:bg-slate-900 w-full rounded-t-[32px] p-6 shadow-2xl animate-in slide-in-from-bottom duration-300 border-t dark:border-slate-800"
+                  style={{ maxHeight: '70vh' }}
+                >
+                    <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto mb-6"></div>
+                    <div className="flex justify-between items-center mb-8 px-2">
+                        <h2 className="text-xl font-bold dark:text-white text-slate-900">{t.connection.selectWallet}</h2>
+                        <button onClick={() => setLoginStep('INITIAL')} className="p-2 dark:bg-slate-800 bg-slate-100 rounded-full dark:text-slate-400 transition-transform active:scale-90"><X size={18}/></button>
+                    </div>
+                    <div className="space-y-4 pb-12 overflow-y-auto no-scrollbar">
                         {WALLETS.map((w) => (
-                            <button key={w.id} onClick={() => { setSelectedWallet(w); setLoginStep('CONNECTING'); setTimeout(() => setLoginStep('SIGNING'), 2500); }} className="w-full flex items-center justify-between p-4 rounded-xl border dark:border-slate-700 border-slate-100 dark:bg-slate-700/50 bg-slate-50 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                                <div className="flex items-center gap-4"><div className="w-10 h-10 rounded-lg flex items-center justify-center bg-white shadow-sm border p-1.5">{w.icon}</div><span className="font-bold dark:text-slate-200 text-slate-800">{w.name}</span></div><ChevronRight size={18} className="text-slate-400" />
+                            <button 
+                              key={w.id} 
+                              onClick={() => { setSelectedWallet(w); setLoginStep('CONNECTING'); setTimeout(() => setLoginStep('SIGNING'), 2500); }} 
+                              className="w-full flex items-center justify-between p-5 rounded-2xl border dark:border-slate-800 border-slate-100 dark:bg-slate-800/40 bg-slate-50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all active:scale-[0.98]"
+                            >
+                                <div className="flex items-center gap-5">
+                                    <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-white shadow-md border dark:border-slate-700 p-2 overflow-hidden">{w.icon}</div>
+                                    <span className="text-lg font-bold dark:text-slate-200 text-slate-800">{w.name}</span>
+                                </div>
+                                <ChevronRight size={20} className="text-slate-400" />
                             </button>
                         ))}
                     </div>
@@ -201,23 +240,32 @@ export const AccountView: React.FC<AccountViewProps> = ({
         )}
 
         {(loginStep === 'SIGNING' || loginStep === 'VERIFYING') && selectedWallet && (
-            <div className="absolute inset-0 z-30 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                <div className="bg-white dark:bg-slate-800 w-full max-w-xs rounded-2xl p-6 shadow-2xl border dark:border-slate-700">
-                    <div className="flex items-center gap-3 mb-4 pb-4 border-b dark:border-slate-700">
-                        <div className="w-8 h-8 rounded-full border p-1.5 bg-white flex items-center justify-center">{selectedWallet.icon}</div>
-                        <h3 className="font-bold dark:text-white text-sm">{t.connection.sigRequest}</h3>
+            <div className="absolute inset-0 z-30 flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-md">
+                <div className="bg-white dark:bg-[#1b2331] w-full max-w-sm rounded-[28px] p-7 shadow-2xl border dark:border-slate-700/50 animate-in zoom-in-95 duration-300">
+                    <div className="flex items-center gap-4 mb-6 pb-6 border-b dark:border-slate-800">
+                        <div className="w-12 h-12 rounded-2xl border dark:border-slate-700 p-2.5 bg-white flex items-center justify-center shadow-sm">{selectedWallet.icon}</div>
+                        <div>
+                           <h3 className="font-bold dark:text-white text-lg leading-tight">{t.connection.sigRequest}</h3>
+                           <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">{selectedWallet.name}</p>
+                        </div>
                     </div>
-                    <div className="bg-slate-50 dark:bg-slate-900 rounded-lg p-3 mb-6 font-mono text-[10px] dark:text-slate-400 female-relaxed">
-                        {t.connection.msgToSign}:<br/>
-                        Welcome to GoldenDex.<br/>By signing this message, you agree to the Terms of Service.
+                    <div className="bg-slate-50 dark:bg-[#131a26] border dark:border-slate-800/50 rounded-2xl p-5 mb-8 font-mono text-xs leading-relaxed dark:text-slate-400">
+                        <span className="text-indigo-500 font-bold mb-2 block">{t.connection.msgToSign}:</span>
+                        Welcome to GoldenDex.<br/><br/>By signing this message, you agree to the Terms of Service.
                     </div>
-                    <div className="flex gap-3">
-                        <button onClick={() => setLoginStep('INITIAL')} className="flex-1 py-3 rounded-xl border text-slate-500 text-sm font-bold">{t.cancel}</button>
+                    <div className="grid grid-cols-2 gap-4">
+                        <button 
+                            onClick={() => setLoginStep('INITIAL')} 
+                            className="py-4 rounded-xl border dark:border-slate-700 border-slate-200 text-slate-500 dark:text-slate-400 font-bold transition-all active:scale-95"
+                        >
+                            {t.cancel}
+                        </button>
                         <button 
                             onClick={() => { setLoginStep('VERIFYING'); setTimeout(() => { onConnect(); setLoginStep('INITIAL'); setSelectedWallet(null); }, 2000); }} 
-                            className="flex-1 py-3 rounded-xl bg-indigo-600 text-white font-bold text-sm flex items-center justify-center gap-2"
+                            style={{ backgroundColor: BRAND_COLOR }}
+                            className="py-4 rounded-xl text-white font-bold flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20 transition-all active:scale-95"
                         >
-                            {loginStep === 'VERIFYING' ? <><Loader2 size={16} className="animate-spin" /> {t.connection.verifying}</> : t.connection.sign}
+                            {loginStep === 'VERIFYING' ? <><Loader2 size={18} className="animate-spin" /> {t.connection.verifying}</> : t.connection.sign}
                         </button>
                     </div>
                 </div>
@@ -310,18 +358,63 @@ export const AccountView: React.FC<AccountViewProps> = ({
             </div>
           )}
         </div>
+
+        {depositCurrency.id !== 'USDC' && (
+          <div className="animate-in fade-in slide-in-from-top-2 duration-400 space-y-4">
+             <div className="bg-purple-500/5 border border-purple-500/20 rounded-xl p-3 flex gap-3">
+                <div className="w-5 h-5 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-500 shrink-0">
+                  <ArrowRightLeft size={12} />
+                </div>
+                <p className="text-[11px] text-purple-600 dark:text-purple-400 font-medium">
+                  闪兑功能将通过聚合Dex自动将您的充值转换为USDC
+                </p>
+             </div>
+             
+             <div className="space-y-2">
+                <div className="flex justify-between items-center px-1">
+                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">滑点设置</label>
+                  <span className="text-[11px] text-slate-400 font-mono">{slippage}%</span>
+                </div>
+                <div className="flex gap-2">
+                  {['0.1', '0.5', '1.0'].map(val => (
+                    <button 
+                      key={val}
+                      onClick={() => setSlippage(val)}
+                      style={{ backgroundColor: slippage === val ? BRAND_COLOR : undefined, color: slippage === val ? 'white' : undefined }}
+                      className={`flex-1 py-2 rounded-lg text-xs font-bold border transition-all ${slippage === val ? 'border-transparent shadow-md' : 'bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700'}`}
+                    >
+                      {val}%
+                    </button>
+                  ))}
+                  <div className="flex-[1.5] relative">
+                    <input 
+                      type="text" 
+                      placeholder="Custom"
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (/^\d*\.?\d*$/.test(val)) setSlippage(val);
+                      }}
+                      className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg py-2 px-3 text-xs outline-none focus:border-indigo-500 dark:text-white"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-400">%</span>
+                  </div>
+                </div>
+             </div>
+          </div>
+        )}
         
         <button 
           onClick={handleWeb3Deposit} 
           disabled={!isDepositValid || depositStatus !== 'IDLE'} 
-          className={`w-full py-4 mt-4 rounded-2xl font-bold transition-all shadow-lg flex items-center justify-center gap-3 ${isDepositValid && depositStatus === 'IDLE' ? 'bg-[#2D3748] dark:bg-slate-800 text-white active:scale-95' : 'bg-slate-200 dark:bg-slate-700/30 text-slate-400 cursor-not-allowed shadow-none'}`}
+          style={{ backgroundColor: isDepositValid && depositStatus === 'IDLE' ? BRAND_COLOR : undefined }}
+          className={`w-full py-4 mt-4 rounded-2xl font-bold transition-all shadow-lg flex items-center justify-center gap-3 ${isDepositValid && depositStatus === 'IDLE' ? 'text-white active:scale-95 shadow-indigo-600/20' : 'bg-slate-200 dark:bg-slate-700/30 text-slate-400 cursor-not-allowed shadow-none'}`}
         >
           {depositStatus === 'IDLE' ? (
             <>{depositCurrency.id === 'USDC' ? t.confirm : t.quickSwap}</>
           ) : (
             <div className="flex items-center gap-2">
               <Loader2 size={18} className="animate-spin" />
-              <span className="text-xs uppercase tracking-widest">
+              <span className="text-xs uppercase tracking-widest text-white">
                 {depositStatus === 'APPROVING' ? t.approving.replace('{currency}', depositCurrency.name).split('...')[0] : 
                  depositStatus === 'SWAPPING' ? t.quickSwap : 
                  t.depositing.split('...')[0]}
@@ -370,9 +463,10 @@ export const AccountView: React.FC<AccountViewProps> = ({
         <button 
           onClick={handleWeb3Withdraw} 
           disabled={!isWithdrawValid || withdrawStatus !== 'IDLE'} 
-          className={`w-full py-4 mt-4 rounded-2xl font-bold transition-all shadow-lg flex items-center justify-center gap-3 ${isWithdrawValid && withdrawStatus === 'IDLE' ? 'bg-[#2D3748] dark:bg-slate-800 text-white' : 'bg-slate-200 dark:bg-slate-700/30 text-slate-400 cursor-not-allowed shadow-none'}`}
+          style={{ backgroundColor: isWithdrawValid && withdrawStatus === 'IDLE' ? BRAND_COLOR : undefined }}
+          className={`w-full py-4 mt-4 rounded-2xl font-bold transition-all shadow-lg flex items-center justify-center gap-3 ${isWithdrawValid && withdrawStatus === 'IDLE' ? 'text-white active:scale-95 shadow-indigo-600/20' : 'bg-slate-200 dark:bg-slate-700/30 text-slate-400 cursor-not-allowed shadow-none'}`}
         >
-          {withdrawStatus === 'IDLE' ? <><ArrowRightLeft size={18} /> {t.confirm}</> : <Loader2 size={18} className="animate-spin" />}
+          {withdrawStatus === 'IDLE' ? <><ArrowRightLeft size={18} /> {t.confirm}</> : <Loader2 size={18} className="animate-spin text-white" />}
         </button>
       </div>
     </div>
@@ -590,13 +684,16 @@ export const AccountView: React.FC<AccountViewProps> = ({
          <div className="w-10 h-10 rounded-full dark:bg-slate-800 bg-slate-200 flex items-center justify-center text-slate-500"><User size={20} /></div>
          <div className="flex-1 overflow-hidden"><div className="flex items-center gap-2 font-bold dark:text-white text-slate-900 truncate">{walletAddress}<button onClick={handleCopy} className="text-slate-400 hover:text-indigo-500">{copied ? <CheckCircle size={14}/> : <Copy size={14}/>}</button></div><div className="text-[10px] text-emerald-500 font-medium">Connected</div></div>
       </div>
-      <div className="bg-gradient-to-br from-indigo-600 to-indigo-800 rounded-2xl p-6 shadow-xl mb-6 text-white">
-        <p className="text-indigo-200 text-xs mb-1 uppercase tracking-wider">{t.totalEquity} (USD)</p>
+      <div 
+        className="rounded-2xl p-6 shadow-xl mb-6 text-white"
+        style={{ background: BRAND_COLOR }}
+      >
+        <p className="text-indigo-100 text-xs mb-1 uppercase tracking-wider">{t.totalEquity} (USD)</p>
         <h1 className="text-3xl font-mono font-bold tracking-tight mb-4">${equity.toFixed(2)}</h1>
-        <div className="grid grid-cols-3 gap-2 border-t border-white/10 pt-4">
-           <div><p className="text-indigo-200 text-[9px] uppercase">{t.avail}</p><p className="font-mono font-bold text-xs">${balance.toFixed(2)}</p></div>
-           <div className="text-center"><p className="text-indigo-200 text-[9px] uppercase">{t.unrealizedPnL}</p><p className={`font-mono font-bold text-xs ${unrealizedPnL >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>{unrealizedPnL.toFixed(2)}</p></div>
-           <div className="text-right"><p className="text-indigo-200 text-[9px] uppercase">{t.totalPerpValue}</p><p className="font-mono font-bold text-xs">${totalPositionValue.toFixed(2)}</p></div>
+        <div className="grid grid-cols-3 gap-2 border-t border-white/20 pt-4">
+           <div><p className="text-indigo-100 text-[9px] uppercase">{t.avail}</p><p className="font-mono font-bold text-xs">${balance.toFixed(2)}</p></div>
+           <div className="text-center"><p className="text-indigo-100 text-[9px] uppercase">{t.unrealizedPnL}</p><p className={`font-mono font-bold text-xs ${unrealizedPnL >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>{unrealizedPnL.toFixed(2)}</p></div>
+           <div className="text-right"><p className="text-indigo-100 text-[9px] uppercase">{t.totalPerpValue}</p><p className="font-mono font-bold text-xs">${totalPositionValue.toFixed(2)}</p></div>
         </div>
       </div>
       <div className="grid grid-cols-2 gap-4 mb-6"><button onClick={() => setView('DEPOSIT')} className="flex items-center justify-center gap-2 dark:bg-slate-800 bg-white py-4 rounded-xl text-sm font-bold border dark:border-slate-700 shadow-sm transition-transform active:scale-95"><CreditCard size={18} className="text-indigo-500"/>{t.deposit}</button><button onClick={() => setView('WITHDRAW')} className="flex items-center justify-center gap-2 dark:bg-slate-800 bg-white py-4 rounded-xl text-sm font-bold border dark:border-slate-700 shadow-sm transition-transform active:scale-95"><ArrowRightLeft size={18} className="text-indigo-500"/>{t.withdraw}</button></div>

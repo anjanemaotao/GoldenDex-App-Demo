@@ -102,12 +102,16 @@ export const TradeView: React.FC<TradeViewProps> = ({
     if (orderType === 'LIMIT' && (!limitPrice || isNaN(parseFloat(limitPrice)) || parseFloat(limitPrice) <= 0)) {
       setPriceError(true);
       hasError = true;
+    } else {
+      setPriceError(false);
     }
 
     // Validate Amount
     if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
       setAmountError(true);
       hasError = true;
+    } else {
+      setAmountError(false);
     }
 
     if (hasError) return;
@@ -298,7 +302,7 @@ export const TradeView: React.FC<TradeViewProps> = ({
                         value={orderType === 'MARKET' ? `${t.market}` : limitPrice} 
                         onChange={(e) => {
                           setLimitPrice(e.target.value);
-                          setPriceError(false);
+                          if (e.target.value && parseFloat(e.target.value) > 0) setPriceError(false);
                         }} 
                         disabled={orderType === 'MARKET'} 
                         className={`w-full dark:bg-slate-800 bg-slate-50 border rounded-lg py-2.5 px-3 text-sm font-mono outline-none transition-colors ${priceError ? 'border-rose-500 ring-1 ring-rose-500' : 'dark:border-slate-700 border-slate-200 focus:border-indigo-500'} ${orderType === 'MARKET' ? 'text-slate-400' : 'dark:text-white text-slate-900'}`} 
@@ -315,7 +319,7 @@ export const TradeView: React.FC<TradeViewProps> = ({
                         value={amount} 
                         onChange={(e) => {
                           setAmount(e.target.value);
-                          setAmountError(false);
+                          if (e.target.value && parseFloat(e.target.value) > 0) setAmountError(false);
                         }} 
                         placeholder={t.quantity} 
                         className={`w-full dark:bg-slate-800 bg-slate-50 border rounded-lg py-2.5 pl-3 pr-16 text-sm font-mono dark:text-white text-slate-900 outline-none transition-colors ${amountError ? 'border-rose-500 ring-1 ring-rose-500' : 'dark:border-slate-700 border-slate-200 focus:border-indigo-500'}`} 
