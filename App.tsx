@@ -65,6 +65,13 @@ const App: React.FC = () => {
   const [positions, setPositions] = useState<Position[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   
+  // 账户页面的初始子视图
+  const [accountSubView, setAccountSubView] = useState<'MAIN' | 'DEPOSIT' | 'WITHDRAW' | 'FILL_HISTORY' | 'TRANSFER_HISTORY' | 'SETTINGS' | 'CASH_FLOW_HISTORY'>('MAIN');
+
+  // Settings switches
+  const [orderConfirmationEnabled, setOrderConfirmationEnabled] = useState<boolean>(true);
+  const [popupNotificationsEnabled, setPopupNotificationsEnabled] = useState<boolean>(true);
+
   const [orderHistory, setOrderHistory] = useState<Order[]>([
     { id: 'oh1', symbol: 'XAUUSDC', side: Side.LONG, type: 'LIMIT', price: 2010.50, amount: 2.0, filled: 0.8, status: 'PARTIAL_FILLED', timestamp: Date.now() - 3600000, marginMode: MarginMode.CROSS },
     { id: 'oh2', symbol: 'BTCUSDC', side: Side.SHORT, type: 'LIMIT', price: 68500.00, amount: 0.1, filled: 0.1, status: 'FILLED', timestamp: Date.now() - 7200000, marginMode: MarginMode.ISOLATED },
@@ -98,6 +105,7 @@ const App: React.FC = () => {
   const t = TRANSLATIONS[language];
 
   const triggerNotification = (title: string, content: string) => {
+    if (!popupNotificationsEnabled) return;
     const id = Date.now().toString();
     setNotifications(prev => [{ id, title, content }, ...prev].slice(0, 3));
     setTimeout(() => setNotifications(prev => prev.filter(n => n.id !== id)), 6000);
@@ -343,7 +351,6 @@ const App: React.FC = () => {
   const totalUnrealizedPnL = positions.reduce((acc, pos) => acc + (pos.side === Side.LONG ? (currentPrice - pos.entryPrice) * pos.size : (pos.entryPrice - currentPrice) * pos.size), 0);
   const marginLocked = positions.reduce((acc, p) => acc + (p.marginMode === MarginMode.ISOLATED ? (p.isolatedMargin || 0) : (p.entryPrice * p.size / p.leverage)), 0);
   
-  // Update Equity calculation to strictly include: available balance, unrealized PnL, and position margin.
   const equity = balance + marginLocked + totalUnrealizedPnL;
   
   const totalPosValue = positions.reduce((acc, pos) => acc + (pos.entryPrice * pos.size), 0);
@@ -356,7 +363,27 @@ const App: React.FC = () => {
       <Toast message={toast.message} visible={toast.visible} type={toast.type} />
       <main className="h-screen w-full">
         {activeTab === Tab.TRADE && (
-          <TradeView symbol={activeSymbol} currentMarket={currentMarket} onSymbolChange={handleSymbolChange} candles={candles} currentPrice={currentPrice} balance={balance} marketTrades={marketTrades} onPlaceOrder={handlePlaceOrder} lang={language} timeframe={timeframe} onTimeframeChange={setTimeframe} positions={positions} />
+          <TradeView 
+            symbol={activeSymbol} 
+            currentMarket={currentMarket} 
+            onSymbolChange={handleSymbolChange} 
+            candles={candles} 
+            currentPrice={currentPrice} 
+            balance={balance} 
+            marketTrades={marketTrades} 
+            onPlaceOrder={handlePlaceOrder} 
+            lang={language} 
+            timeframe={timeframe} 
+            onTimeframeChange={setTimeframe} 
+            positions={positions}
+            orderConfirmationEnabled={orderConfirmationEnabled}
+            setOrderConfirmationEnabled={setOrderConfirmationEnabled}
+            isConnected={isWalletConnected}
+            onDepositClick={() => {
+              setAccountSubView('DEPOSIT');
+              setActiveTab(Tab.ACCOUNT);
+            }}
+          />
         )}
         {activeTab === Tab.POSITIONS && (
           <PositionsView positions={positions} currentPrice={currentPrice} equity={equity} balance={balance} maintenanceMargin={maintenanceMargin} marginRatio={marginRatio} onClosePosition={handleClosePosition} onUpdateMargin={handleUpdateMargin} onCloseAllPositions={handleCloseAllPositions} lang={language} />
@@ -365,10 +392,43 @@ const App: React.FC = () => {
           <OrdersView orders={orders} orderHistory={orderHistory} onCancelOrder={handleCancelOrder} onCancelAllOrders={handleCancelAllOrders} lang={language} />
         )}
         {activeTab === Tab.ACCOUNT && (
-          <AccountView balance={balance} equity={equity} unrealizedPnL={totalUnrealizedPnL} totalPositionValue={totalPosValue} externalWalletBalance={externalWalletBalance} fillHistory={fillHistory} transferHistory={transferHistory} cashFlowHistory={cashFlowHistory} onDeposit={handleDeposit} onWithdraw={handleWithdraw} isConnected={isWalletConnected} onConnect={() => setIsWalletConnected(true)} onDisconnect={() => setIsWalletConnected(false)} language={language} setLanguage={setLanguage} theme={theme} setTheme={setTheme} positionMode={positionMode} onSetPositionMode={setPositionMode} />
+          <AccountView 
+            balance={balance} 
+            equity={equity} 
+            unrealizedPnL={totalUnrealizedPnL} 
+            totalPositionValue={totalPosValue} 
+            externalWalletBalance={externalWalletBalance} 
+            fillHistory={fillHistory} 
+            transferHistory={transferHistory} 
+            cashFlowHistory={cashFlowHistory} 
+            onDeposit={handleDeposit} 
+            onWithdraw={handleWithdraw} 
+            isConnected={isWalletConnected} 
+            onConnect={() => setIsWalletConnected(true)} 
+            onDisconnect={() => setIsWalletConnected(false)} 
+            language={language} 
+            setLanguage={setLanguage} 
+            theme={theme} 
+            setTheme={setTheme} 
+            positionMode={positionMode} 
+            onSetPositionMode={setPositionMode}
+            orderConfirmationEnabled={orderConfirmationEnabled}
+            setOrderConfirmationEnabled={setOrderConfirmationEnabled}
+            popupNotificationsEnabled={popupNotificationsEnabled}
+            setPopupNotificationsEnabled={setPopupNotificationsEnabled}
+            initialView={accountSubView}
+            onViewChanged={(v) => {
+              // 当进入具体页面后，重置请求状态，避免下次手动切换 Tab 时重复进入
+              if (v === 'MAIN') setAccountSubView('MAIN');
+            }}
+          />
         )}
       </main>
-      <BottomNav currentTab={activeTab} onTabChange={setActiveTab} ordersCount={orders.length} positionsCount={positions.length} lang={language} />
+      <BottomNav currentTab={activeTab} onTabChange={(tab) => {
+        // 如果是手动切换到账户页，确保从主页开始
+        if (tab === Tab.ACCOUNT) setAccountSubView('MAIN');
+        setActiveTab(tab);
+      }} ordersCount={orders.length} positionsCount={positions.length} lang={language} />
     </div>
   );
 };

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Settings2, Info, X, BarChart2, TrendingUp, Layers, ChevronDown, Edit2, Search } from 'lucide-react';
+import { Settings2, Info, X, BarChart2, TrendingUp, Layers, ChevronDown, Edit2, Search, CheckSquare, Square } from 'lucide-react';
 import { CandleChart } from './CandleChart';
 import { OrderBook } from './OrderBook';
 import { DepthChart } from './DepthChart';
@@ -20,6 +20,10 @@ interface TradeViewProps {
   timeframe: Timeframe;
   onTimeframeChange: (tf: Timeframe) => void;
   positions: Position[];
+  orderConfirmationEnabled: boolean;
+  setOrderConfirmationEnabled: (val: boolean) => void;
+  onDepositClick?: () => void;
+  isConnected: boolean;
 }
 
 const TIMEFRAMES: Timeframe[] = ['1m', '3m', '5m', '15m', '30m', '1H', '2H', '4H', '8H', '12H', '1D', '3D', '1W', '1M'];
@@ -36,7 +40,11 @@ export const TradeView: React.FC<TradeViewProps> = ({
   lang,
   timeframe,
   onTimeframeChange,
-  positions
+  positions,
+  orderConfirmationEnabled,
+  setOrderConfirmationEnabled,
+  onDepositClick,
+  isConnected
 }) => {
   const t = TRANSLATIONS[lang];
   const [orderType, setOrderType] = useState<'MARKET' | 'LIMIT'>('MARKET');
@@ -54,7 +62,10 @@ export const TradeView: React.FC<TradeViewProps> = ({
   const [activeBookTab, setActiveBookTab] = useState<'book' | 'trades'>('book');
   const [sizeSliderValue, setSizeSliderValue] = useState<number>(0);
   
-  // Validation states
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [confirmOrderData, setConfirmOrderData] = useState<{ side: Side, size: number, price: number, unit: string } | null>(null);
+  const [dontShowAgainLocal, setDontShowAgainLocal] = useState(false);
+
   const [amountError, setAmountError] = useState(false);
   const [priceError, setPriceError] = useState(false);
   
@@ -97,32 +108,42 @@ export const TradeView: React.FC<TradeViewProps> = ({
 
   const handleTrade = (side: Side) => {
     let hasError = false;
-
-    // Validate Price (Limit only)
     if (orderType === 'LIMIT' && (!limitPrice || isNaN(parseFloat(limitPrice)) || parseFloat(limitPrice) <= 0)) {
       setPriceError(true);
       hasError = true;
     } else {
       setPriceError(false);
     }
-
-    // Validate Amount
     if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
       setAmountError(true);
       hasError = true;
     } else {
       setAmountError(false);
     }
-
     if (hasError) return;
 
     let size = parseFloat(amount);
-    if (sizeUnit === 'USDC') size = size / executionPrice;
-    onPlaceOrder(side, size, executionPrice, orderType, marginMode);
+    if (orderConfirmationEnabled) {
+      setConfirmOrderData({ side, size, price: executionPrice, unit: sizeUnit });
+      setShowConfirmModal(true);
+    } else {
+      executeFinalTrade(side, size);
+    }
+  };
+
+  const executeFinalTrade = (side: Side, size: number) => {
+    let finalSize = size;
+    if (sizeUnit === 'USDC') finalSize = size / executionPrice;
+    onPlaceOrder(side, finalSize, executionPrice, orderType, marginMode);
     setAmount('');
     setSizeSliderValue(0);
     setAmountError(false);
     setPriceError(false);
+    setShowConfirmModal(false);
+    setConfirmOrderData(null);
+    if (dontShowAgainLocal) {
+      setOrderConfirmationEnabled(false);
+    }
   };
 
   const longLiqPrice = executionPrice * (1 - 1/leverage);
@@ -187,7 +208,7 @@ export const TradeView: React.FC<TradeViewProps> = ({
       </div>
 
       {showMarketSelector && (
-          <div className="fixed top-0 bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md z-50 flex flex-col bg-white dark:bg-slate-900 animate-in fade-in slide-in-from-top duration-300 shadow-2xl border-x dark:border-slate-800 border-slate-200">
+          <div className="fixed inset-y-0 left-1/2 -translate-x-1/2 w-full max-w-md z-50 flex flex-col bg-white dark:bg-slate-900 animate-in fade-in slide-in-from-top duration-300 shadow-2xl border-x dark:border-slate-800 border-slate-200">
               <div className="p-4 flex items-center gap-3 border-b dark:border-slate-800 border-slate-100">
                   <div className="flex-1 relative">
                     <input 
@@ -202,7 +223,6 @@ export const TradeView: React.FC<TradeViewProps> = ({
                   </div>
                   <button onClick={() => setShowMarketSelector(false)} className="text-slate-500 font-medium text-sm">{t.cancel}</button>
               </div>
-
               <div className="px-4 py-3 grid grid-cols-5 text-[10px] dark:text-slate-500 text-slate-400 font-bold uppercase tracking-wider border-b dark:border-slate-800/50 border-slate-50">
                   <span className="col-span-1">{t.marketList.contract}</span>
                   <span className="text-right">{t.marketList.lastPrice}</span>
@@ -210,7 +230,6 @@ export const TradeView: React.FC<TradeViewProps> = ({
                   <span className="text-right">{t.marketList.volume}</span>
                   <span className="text-right">{t.marketList.funding}</span>
               </div>
-
               <div className="flex-1 overflow-y-auto no-scrollbar">
                   {filteredMarkets.map((m) => (
                       <div 
@@ -312,7 +331,20 @@ export const TradeView: React.FC<TradeViewProps> = ({
               </div>
 
               <div className="mb-6">
-                 <div className="flex justify-between mb-1"><label className="text-[10px] text-slate-500">{t.size}</label><span className="text-[10px] text-slate-500">{t.avail}: <span className="dark:text-white text-slate-900 font-mono">{balance.toFixed(2)}</span> USDC</span></div>
+                 <div className="flex justify-between mb-1">
+                    <label className="text-[10px] text-slate-500">{t.size}</label>
+                    <div className="flex items-center gap-1.5">
+                       <span className="text-[10px] text-slate-500">{t.avail}: <span className="dark:text-white text-slate-900 font-mono">{balance.toFixed(2)}</span> USDC</span>
+                       {isConnected && onDepositClick && (
+                         <button 
+                           onClick={onDepositClick}
+                           className="text-[10px] font-bold text-indigo-500 hover:text-indigo-400 transition-colors"
+                         >
+                           {t.deposit}
+                         </button>
+                       )}
+                    </div>
+                 </div>
                  <div className="relative">
                      <input 
                         type="number" 
@@ -362,6 +394,72 @@ export const TradeView: React.FC<TradeViewProps> = ({
           </div>
       </div>
       
+      {/* 订单确认框 - 蒙板限制在 App 宽度且居中，盖住底部导航栏 */}
+      {showConfirmModal && confirmOrderData && (
+          <div className="fixed inset-y-0 left-1/2 -translate-x-1/2 w-full max-w-md z-[100] flex items-center justify-center p-6 bg-slate-900/90 animate-in fade-in duration-200">
+             <div className="bg-white dark:bg-slate-800 w-full max-w-[340px] rounded-2xl shadow-2xl overflow-hidden border dark:border-slate-700 border-slate-200 animate-in zoom-in-95 duration-300">
+                 <div className="flex justify-between items-center px-5 py-4 border-b dark:border-slate-700 border-slate-100">
+                    <h3 className="font-bold text-slate-900 dark:text-white text-base">{t.orderConfirm}</h3>
+                    <button onClick={() => setShowConfirmModal(false)} className="text-slate-400 hover:text-rose-500 transition-colors"><X size={20} /></button>
+                 </div>
+                 
+                 <div className="px-5 py-6 space-y-4">
+                    <div className="flex justify-between items-center">
+                       <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t.contract}</span>
+                       <span className="text-sm font-bold text-slate-900 dark:text-white uppercase">{symbol}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                       <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t.direction}</span>
+                       <span className={`text-sm font-bold ${confirmOrderData.side === Side.LONG ? 'text-emerald-500' : 'text-rose-500'}`}>
+                          {confirmOrderData.side === Side.LONG ? t.long.split('/')[1] : t.short.split('/')[1]}
+                       </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                       <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t.leverage}</span>
+                       <span className="text-sm font-bold text-slate-900 dark:text-white font-mono">{leverage}X</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                       <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t.size}</span>
+                       <span className="text-sm font-bold text-slate-900 dark:text-white font-mono">{confirmOrderData.size.toLocaleString()} {confirmOrderData.unit}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                       <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t.price}</span>
+                       <span className="text-sm font-bold text-slate-900 dark:text-white font-mono">
+                          {orderType === 'MARKET' ? t.market : `${confirmOrderData.price.toFixed(2)}`}
+                       </span>
+                    </div>
+                 </div>
+
+                 <div className="px-5 pb-6 space-y-5">
+                    <div 
+                      className="flex items-center gap-2 cursor-pointer select-none group"
+                      onClick={() => setDontShowAgainLocal(!dontShowAgainLocal)}
+                    >
+                       <div className="text-indigo-500 transition-colors">
+                          {dontShowAgainLocal ? <CheckSquare size={18} /> : <Square size={18} className="text-slate-300 dark:text-slate-600" />}
+                       </div>
+                       <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">{t.dontShowAgain}</span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                        <button 
+                           onClick={() => setShowConfirmModal(false)} 
+                           className="py-3.5 rounded-xl border dark:border-slate-700 border-slate-200 text-slate-500 dark:text-slate-400 font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                        >
+                           {t.cancel}
+                        </button>
+                        <button 
+                           onClick={() => executeFinalTrade(confirmOrderData.side, confirmOrderData.size)} 
+                           className="py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm transition-all shadow-lg shadow-indigo-600/20 active:scale-95"
+                        >
+                           {t.confirm}
+                        </button>
+                    </div>
+                 </div>
+             </div>
+          </div>
+      )}
+
       {showLeverageModal && (
         <div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in">
              <div className="bg-white dark:bg-slate-800 rounded-xl w-full max-w-sm p-6 shadow-2xl animate-in zoom-in-95 duration-200">
