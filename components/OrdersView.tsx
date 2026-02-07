@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Order, Side, Language } from '../types';
 import { Clock, X, Trash2, History as HistoryIcon } from 'lucide-react';
@@ -14,6 +15,21 @@ interface OrdersViewProps {
 export const OrdersView: React.FC<OrdersViewProps> = ({ orders, orderHistory, onCancelOrder, onCancelAllOrders, lang }) => {
    const t = TRANSLATIONS[lang];
    const [activeTab, setActiveTab] = useState<'OPEN' | 'HISTORY'>('OPEN');
+
+   const getStatusInfo = (status: Order['status']) => {
+      switch (status) {
+         case 'FILLED':
+            return { label: t.statusFilled, color: 'bg-emerald-500/20 text-emerald-500' };
+         case 'PARTIAL_FILLED':
+            return { label: t.statusPartialFilled, color: 'bg-orange-500/20 text-orange-500' };
+         case 'EXPIRED':
+            return { label: t.statusExpired, color: 'bg-slate-200 dark:bg-slate-800 text-slate-500' };
+         case 'CANCELLED':
+            return { label: t.statusCancelled, color: 'bg-slate-200 dark:bg-slate-700 text-slate-500' };
+         default:
+            return { label: status, color: 'bg-slate-200 dark:bg-slate-700 text-slate-500' };
+      }
+   };
 
    const renderOpenOrders = () => {
      if (orders.length === 0) {
@@ -103,30 +119,40 @@ export const OrdersView: React.FC<OrdersViewProps> = ({ orders, orderHistory, on
       return (
          <div className="space-y-3">
             <h2 className="dark:text-slate-400 text-slate-500 text-xs uppercase font-bold tracking-wider px-1 mb-2">{t.orderHistory}</h2>
-            {orderHistory.map((order) => (
-               <div key={order.id} className="dark:bg-slate-800 bg-white border dark:border-slate-700 border-slate-200 rounded-xl p-4 shadow-sm opacity-80">
-                  <div className="flex justify-between items-start mb-2">
-                     <div className="flex items-center gap-2">
-                        <span className={`text-sm font-bold ${order.side === Side.LONG ? 'text-emerald-500' : 'text-rose-500'}`}>
-                           {order.side === Side.LONG ? t.long.split('/')[0] : t.short.split('/')[0]} {order.symbol}
-                        </span>
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${
-                           order.status === 'FILLED' ? 'bg-emerald-500/20 text-emerald-500' : 'bg-slate-200 dark:bg-slate-700 text-slate-500'
-                        }`}>
-                           {order.status === 'FILLED' ? t.statusFilled : t.statusCancelled}
-                        </span>
+            {orderHistory.map((order) => {
+               const statusInfo = getStatusInfo(order.status);
+               return (
+                  <div key={order.id} className="dark:bg-slate-800 bg-white border dark:border-slate-700 border-slate-200 rounded-xl p-4 shadow-sm opacity-80">
+                     <div className="flex justify-between items-start mb-4">
+                        <div className="flex items-center gap-2">
+                           <span className={`text-sm font-bold ${order.side === Side.LONG ? 'text-emerald-500' : 'text-rose-500'}`}>
+                              {order.side === Side.LONG ? t.long.split('/')[0] : t.short.split('/')[0]} {order.symbol}
+                           </span>
+                           <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${statusInfo.color}`}>
+                              {statusInfo.label}
+                           </span>
+                        </div>
+                        <div className="text-right text-[10px] dark:text-slate-500 text-slate-400 font-mono">
+                           {new Date(order.timestamp).toLocaleString()}
+                        </div>
                      </div>
-                     <div className="text-right text-xs dark:text-slate-400 text-slate-500">
-                        {new Date(order.timestamp).toLocaleString()}
+                     <div className="space-y-2.5">
+                        <div className="flex justify-between items-center text-xs">
+                           <span className="dark:text-slate-500 text-slate-400">{lang === 'en' ? 'Filled Price' : '成交价格'}</span>
+                           <span className="dark:text-slate-200 text-slate-800 font-mono font-bold">{order.price.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-xs">
+                           <span className="dark:text-slate-500 text-slate-400">{lang === 'en' ? 'Filled Amount' : '成交数量'}</span>
+                           <span className="dark:text-slate-200 text-slate-800 font-mono font-bold">{order.filled.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-xs">
+                           <span className="dark:text-slate-500 text-slate-400">{lang === 'en' ? 'Total Order Amount' : '委托总量'}</span>
+                           <span className="dark:text-slate-200 text-slate-800 font-mono font-bold">{order.amount.toFixed(2)}</span>
+                        </div>
                      </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                     <div className="dark:text-slate-400 text-slate-500">{t.price}: <span className="dark:text-slate-300 text-slate-700 font-mono">{order.price.toFixed(2)}</span></div>
-                     <div className="dark:text-slate-400 text-slate-500 text-right">{t.size}: <span className="dark:text-slate-300 text-slate-700 font-mono">{order.amount}</span></div>
-                     <div className="dark:text-slate-400 text-slate-500">{t.filled}: <span className="dark:text-slate-300 text-slate-700 font-mono">{order.filled}</span></div>
-                  </div>
-               </div>
-            ))}
+               );
+            })}
          </div>
       );
    };

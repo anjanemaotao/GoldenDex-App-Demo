@@ -76,7 +76,9 @@ const App: React.FC = () => {
     { id: 'oh1', symbol: 'XAUUSDC', side: Side.LONG, type: 'LIMIT', price: 2010.50, amount: 2.0, filled: 0.8, status: 'PARTIAL_FILLED', timestamp: Date.now() - 3600000, marginMode: MarginMode.CROSS },
     { id: 'oh2', symbol: 'BTCUSDC', side: Side.SHORT, type: 'LIMIT', price: 68500.00, amount: 0.1, filled: 0.1, status: 'FILLED', timestamp: Date.now() - 7200000, marginMode: MarginMode.ISOLATED },
     { id: 'oh3', symbol: 'ETHUSDC', side: Side.LONG, type: 'LIMIT', price: 3200.00, amount: 5.0, filled: 0, status: 'CANCELLED', timestamp: Date.now() - 10800000, marginMode: MarginMode.CROSS },
-    { id: 'oh4', symbol: 'XAUUSDC', side: Side.SHORT, type: 'LIMIT', price: 2050.25, amount: 1.5, filled: 1.5, status: 'FILLED', timestamp: Date.now() - 14400000, marginMode: MarginMode.CROSS }
+    { id: 'oh4', symbol: 'XAUUSDC', side: Side.SHORT, type: 'LIMIT', price: 2050.25, amount: 1.5, filled: 1.5, status: 'FILLED', timestamp: Date.now() - 14400000, marginMode: MarginMode.CROSS },
+    { id: 'oh5', symbol: 'SOLUSDC', side: Side.LONG, type: 'LIMIT', price: 135.50, amount: 10.0, filled: 3.5, status: 'PARTIAL_FILLED', timestamp: Date.now() - 18000000, marginMode: MarginMode.CROSS },
+    { id: 'oh6', symbol: 'XAUUSDC', side: Side.LONG, type: 'LIMIT', price: 1950.00, amount: 5.0, filled: 0, status: 'EXPIRED', timestamp: Date.now() - 25200000, marginMode: MarginMode.CROSS }
   ]);
 
   const [fillHistory] = useState<FillRecord[]>([

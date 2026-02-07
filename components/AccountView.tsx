@@ -529,7 +529,7 @@ export const AccountView: React.FC<AccountViewProps> = ({
               <div className="flex justify-between items-center border-t dark:border-slate-700/50 pt-3">
                  <div className="px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-[10px] text-slate-500 dark:text-slate-400 font-bold">Arbitrum One</div>
                  <button className="flex items-center gap-1 text-[10px] text-indigo-500 font-bold hover:underline">
-                    Explorer <ExternalLink size={10} />
+                    {t.explorer} <ExternalLink size={10} />
                  </button>
               </div>
             </div>

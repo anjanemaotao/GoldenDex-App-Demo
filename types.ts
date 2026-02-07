@@ -46,7 +46,7 @@ export interface Order {
   price: number;
   amount: number;
   filled: number;
-  status: 'OPEN' | 'FILLED' | 'CANCELLED' | 'PARTIAL_FILLED';
+  status: 'OPEN' | 'FILLED' | 'CANCELLED' | 'PARTIAL_FILLED' | 'EXPIRED';
   timestamp: number;
   marginMode: MarginMode;
 }

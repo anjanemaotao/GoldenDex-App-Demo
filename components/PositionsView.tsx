@@ -47,6 +47,9 @@ export const PositionsView: React.FC<PositionsViewProps> = ({
   
   const [showCloseAllConfirm, setShowCloseAllConfirm] = useState(false);
 
+  // 判断是否存在全仓仓位
+  const hasCrossPositions = positions.some(p => p.marginMode === MarginMode.CROSS);
+
   // Helper to get correct input state
   const currentMarginInput = marginAction === 'ADD' ? addMarginInput : removeMarginInput;
   const setMarginInput = (val: string) => {
@@ -112,9 +115,6 @@ export const PositionsView: React.FC<PositionsViewProps> = ({
       const newMarginValue = Math.max(0, currentMarginValue + change);
       
       const posValue = pos.entryPrice * pos.size;
-      const currentLeverage = posValue / currentMarginValue;
-      const newLeverage = newMarginValue > 0 ? posValue / newMarginValue : 0;
-      
       const maintMarginReq = posValue * 0.01; 
       const currentRatio = (maintMarginReq / currentMarginValue) * 100;
       const newRatio = newMarginValue > 0 ? (maintMarginReq / newMarginValue) * 100 : 0;
@@ -124,7 +124,7 @@ export const PositionsView: React.FC<PositionsViewProps> = ({
       
       const maxRemove = Math.max(0, currentMarginValue - maintMarginReq);
 
-      return { currentMarginValue, newMarginValue, currentLeverage, newLeverage, currentLiq, newLiq, currentRatio, newRatio, maxRemove };
+      return { currentMarginValue, newMarginValue, currentLiq, newLiq, currentRatio, newRatio, maxRemove };
   };
 
   const metrics = editingPosId ? getPositionMetrics() : null;
@@ -135,30 +135,35 @@ export const PositionsView: React.FC<PositionsViewProps> = ({
       return marginAction === 'ADD' ? val <= balance : val <= (metrics?.maxRemove || 0);
   };
 
-  const renderRiskHeader = () => (
-    <div className="dark:bg-slate-800/50 bg-white/80 border-b dark:border-slate-800 border-slate-200 p-4 sticky top-0 backdrop-blur-md z-10">
-      <div className="grid grid-cols-3 gap-2">
-        <div className="dark:bg-slate-800 bg-white rounded-lg p-2 border dark:border-slate-700 border-slate-200 shadow-sm">
-           <div className="text-[10px] dark:text-slate-500 text-slate-400 mb-1">{t.marginRatio}</div>
-           <div className={`font-mono font-bold text-sm ${marginRatio > 80 ? 'text-rose-500' : 'text-emerald-500'}`}>{marginRatio.toFixed(2)}%</div>
-        </div>
-        <div className="dark:bg-slate-800 bg-white rounded-lg p-2 border dark:border-slate-700 border-slate-200 shadow-sm">
-           <div className="text-[10px] dark:text-slate-500 text-slate-400 mb-1">{t.maintMargin}</div>
-           <div className="font-mono font-bold text-sm dark:text-slate-200 text-slate-800">${maintenanceMargin.toFixed(2)}</div>
-        </div>
-        <div className="dark:bg-slate-800 bg-white rounded-lg p-2 border dark:border-slate-700 border-slate-200 shadow-sm">
-           <div className="text-[10px] dark:text-slate-500 text-slate-400 mb-1">{t.marginBal}</div>
-           <div className="font-mono font-bold text-sm dark:text-slate-200 text-slate-800">${equity.toFixed(2)}</div>
+  const renderRiskHeader = () => {
+    // 只有全仓模式时才显示顶部的汇总栏
+    if (!hasCrossPositions) return null;
+
+    return (
+      <div className="dark:bg-slate-800/50 bg-white/80 border-b dark:border-slate-800 border-slate-200 p-4 sticky top-0 backdrop-blur-md z-10 animate-in fade-in duration-300">
+        <div className="grid grid-cols-3 gap-2">
+          <div className="dark:bg-slate-800 bg-white rounded-lg p-2 border dark:border-slate-700 border-slate-200 shadow-sm">
+             <div className="text-[10px] dark:text-slate-500 text-slate-400 mb-1">{t.marginRatio}</div>
+             <div className={`font-mono font-bold text-sm ${marginRatio > 80 ? 'text-rose-500' : 'text-emerald-500'}`}>{marginRatio.toFixed(2)}%</div>
+          </div>
+          <div className="dark:bg-slate-800 bg-white rounded-lg p-2 border dark:border-slate-700 border-slate-200 shadow-sm">
+             <div className="text-[10px] dark:text-slate-500 text-slate-400 mb-1">{t.maintMargin}</div>
+             <div className="font-mono font-bold text-sm dark:text-slate-200 text-slate-800">${maintenanceMargin.toFixed(2)}</div>
+          </div>
+          <div className="dark:bg-slate-800 bg-white rounded-lg p-2 border dark:border-slate-700 border-slate-200 shadow-sm">
+             <div className="text-[10px] dark:text-slate-500 text-slate-400 mb-1">{t.marginBal}</div>
+             <div className="font-mono font-bold text-sm dark:text-slate-200 text-slate-800">${equity.toFixed(2)}</div>
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   if (positions.length === 0) {
     return (
       <div className="h-full flex flex-col">
         {renderRiskHeader()}
-        <div className="flex-1 flex flex-col items-center justify-center dark:text-slate-500 text-slate-400">
+        <div className="flex-1 flex flex-col items-center justify-center dark:text-slate-500 text-slate-400 mt-20">
           <div className="dark:bg-slate-800 bg-white p-4 rounded-full mb-4 shadow-sm border dark:border-slate-700 border-slate-200">
              <TrendingUp size={32} className="opacity-50" />
           </div>
@@ -183,9 +188,16 @@ export const PositionsView: React.FC<PositionsViewProps> = ({
           const marginUsed = pos.marginMode === MarginMode.ISOLATED && pos.isolatedMargin ? pos.isolatedMargin : (pos.entryPrice * pos.size) / pos.leverage;
           const liquidationPrice = pos.side === Side.LONG ? pos.entryPrice - (marginUsed / pos.size) : pos.entryPrice + (marginUsed / pos.size);
           const isProfit = pnl >= 0;
+          const roi = (pnl / marginUsed) * 100;
+
+          // 逐仓数据计算
+          const posValue = pos.entryPrice * pos.size;
+          const posMaintMargin = posValue * 0.01;
+          const posMarginRatio = (posMaintMargin / marginUsed) * 100;
+          const posMarginBal = marginUsed + pnl;
 
           return (
-            <div key={pos.id} className="dark:bg-slate-800 bg-white border dark:border-slate-700 border-slate-200 rounded-xl p-4 shadow-sm">
+            <div key={pos.id} className="dark:bg-slate-800 bg-white border dark:border-slate-700 border-slate-200 rounded-xl p-4 shadow-sm animate-in slide-in-from-bottom-2 duration-300">
               <div className="flex justify-between items-start mb-3">
                 <div className="flex items-center gap-2">
                   <div className={`p-1.5 rounded ${pos.side === Side.LONG ? 'bg-emerald-500/20 text-emerald-500' : 'bg-rose-500/20 text-rose-500'}`}>
@@ -204,14 +216,25 @@ export const PositionsView: React.FC<PositionsViewProps> = ({
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className={`text-lg font-mono font-bold ${isProfit ? 'text-emerald-500' : 'text-rose-500'}`}>{isProfit ? '+' : ''}{pnl.toFixed(2)}</div>
+                  <div className={`text-lg font-mono font-bold leading-tight ${isProfit ? 'text-emerald-500' : 'text-rose-500'}`}>
+                    {isProfit ? '+' : ''}{pnl.toFixed(2)}
+                  </div>
+                  <div className={`text-[10px] font-bold font-mono mt-0.5 ${isProfit ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    {isProfit ? '+' : ''}{roi.toFixed(2)}%
+                  </div>
                 </div>
               </div>
+              
               <div className="grid grid-cols-2 gap-y-2 text-xs mb-4">
                 <div className="dark:text-slate-400 text-slate-500">{t.size} (XAU)</div>
                 <div className="text-right dark:text-slate-200 text-slate-800 font-mono">{pos.size.toFixed(4)}</div>
+                
+                <div className="dark:text-slate-400 text-slate-500">{t.entryPrice}</div>
+                <div className="text-right dark:text-slate-200 text-slate-800 font-mono">{pos.entryPrice.toFixed(2)}</div>
+
                 <div className="dark:text-slate-400 text-slate-500">{t.liqPrice}</div>
                 <div className="text-right text-orange-500 font-mono font-bold">{liquidationPrice > 0 ? liquidationPrice.toFixed(2) : '0.00'}</div>
+                
                 <div className="dark:text-slate-400 text-slate-500">{t.margin}</div>
                 <div className="text-right dark:text-slate-200 text-slate-800 font-mono flex items-center justify-end gap-2">
                     {marginUsed.toFixed(2)}
@@ -220,13 +243,34 @@ export const PositionsView: React.FC<PositionsViewProps> = ({
                     )}
                 </div>
               </div>
+
+              {/* 逐仓模式专属独立统计区 */}
+              {pos.marginMode === MarginMode.ISOLATED && (
+                <div className="animate-in fade-in duration-500">
+                  <div className="w-full h-px bg-slate-200 dark:bg-slate-700 mb-3 opacity-50"></div>
+                  <div className="grid grid-cols-3 gap-2 mb-4">
+                    <div className="space-y-1">
+                      <div className="text-[9px] dark:text-slate-500 text-slate-400 uppercase">{t.marginRatio}</div>
+                      <div className={`font-mono text-[11px] font-bold ${posMarginRatio > 80 ? 'text-rose-500' : 'text-emerald-500'}`}>{posMarginRatio.toFixed(2)}%</div>
+                    </div>
+                    <div className="space-y-1 border-l dark:border-slate-700 pl-2">
+                      <div className="text-[9px] dark:text-slate-500 text-slate-400 uppercase">{t.maintMargin}</div>
+                      <div className="font-mono text-[11px] dark:text-slate-300 text-slate-700">${posMaintMargin.toFixed(2)}</div>
+                    </div>
+                    <div className="space-y-1 border-l dark:border-slate-700 pl-2">
+                      <div className="text-[9px] dark:text-slate-500 text-slate-400 uppercase">{t.marginBal}</div>
+                      <div className="font-mono text-[11px] dark:text-slate-300 text-slate-700">${posMarginBal.toFixed(2)}</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <button onClick={() => { setClosingPosId(pos.id); setClosePercent(100); }} className="w-full py-2.5 dark:bg-slate-700 bg-slate-100 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2">{t.closePos}</button>
             </div>
           );
         })}
       </div>
 
-      {/* Redesigned Close Position Modal to match screenshot */}
       {closingPos && (
           <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in">
              <div className="bg-[#1b2331] w-full max-w-sm rounded-[24px] p-6 shadow-2xl border border-slate-700/50">
@@ -276,7 +320,6 @@ export const PositionsView: React.FC<PositionsViewProps> = ({
                     </div>
                     <div className="space-y-1.5">
                         <label className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{t.mode}</label>
-                        {/* Fix: changed undefined setOrderType to setCloseOrderType */}
                         <div className="w-full bg-[#131a26] border border-slate-700/80 rounded-xl px-4 py-3 flex items-center justify-between cursor-pointer h-14" onClick={() => setCloseOrderType(closeOrderType === 'MARKET' ? 'LIMIT' : 'MARKET')}>
                             <span className="text-sm text-white font-medium">{closeOrderType === 'MARKET' ? t.market : t.limit}</span>
                             <ArrowRightLeft size={16} className="text-slate-500" />
@@ -300,7 +343,6 @@ export const PositionsView: React.FC<PositionsViewProps> = ({
                     </div>
                 </div>
 
-                {/* Percentage Slider to match screenshot */}
                 <div className="mb-10 px-1 relative h-6 flex items-center group">
                    <div className="absolute inset-x-0 h-1 bg-slate-700/50 rounded-full overflow-hidden">
                       <div className="h-full bg-indigo-500 transition-all" style={{ width: `${closePercent}%` }} />
@@ -324,7 +366,6 @@ export const PositionsView: React.FC<PositionsViewProps> = ({
                    </div>
                 </div>
 
-                {/* Summary Info Area to match screenshot */}
                 <div className="bg-[#131a26]/50 border border-slate-700/30 rounded-2xl p-5 mb-8">
                    <div className="flex justify-between items-center mb-3">
                       <span className="text-xs text-slate-500 font-medium">{t.closeOperation.positionSize}</span>
@@ -357,6 +398,7 @@ export const PositionsView: React.FC<PositionsViewProps> = ({
           </div>
       )}
 
+      {/* 调整保证金 Modal */}
       {editingPosId && metrics && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
              <div className="bg-white dark:bg-slate-800 w-full max-w-sm rounded-2xl p-6 shadow-2xl border dark:border-slate-700 border-slate-200">
@@ -378,24 +420,21 @@ export const PositionsView: React.FC<PositionsViewProps> = ({
                         <button onClick={() => setMarginInput((marginAction === 'ADD' ? balance : metrics.maxRemove).toFixed(2))} className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-indigo-500">{t.max}</button>
                     </div>
                 </div>
-                {/* 4 Comparison Metrics */}
                 <div className="bg-slate-50 dark:bg-slate-900 border dark:border-slate-700 border-slate-200 rounded-xl p-3 mb-6 space-y-3 text-[11px]">
                    <div className="flex items-center gap-2 mb-2"><span className="font-bold text-slate-400 flex-1 text-center">{t.before}</span><ArrowRight size={12} className="text-slate-400" /><span className="font-bold text-indigo-500 flex-1 text-center">{t.after}</span></div>
-                   
                    <div className="flex items-center"><div className="flex-1 text-center text-slate-400">{t.margin}</div><div className="flex-1 text-center font-mono">{metrics.currentMarginValue.toFixed(2)}</div><div className="flex-1 text-center font-mono font-bold text-indigo-500">{metrics.newMarginValue.toFixed(2)}</div></div>
-                   
-                   <div className="flex items-center"><div className="flex-1 text-center text-slate-400">{t.leverage}</div><div className="flex-1 text-center font-mono">{metrics.currentLeverage.toFixed(1)}x</div><div className="flex-1 text-center font-mono font-bold text-indigo-500">{metrics.newLeverage.toFixed(1)}x</div></div>
-                   
+                   {/* 移除杠杆变化显示，满足用户需求：调整保证金不会影响（显示）杠杆倍数变化 */}
                    <div className="flex items-center"><div className="flex-1 text-center text-slate-400">{t.marginRatio}</div><div className="flex-1 text-center font-mono">{metrics.currentRatio.toFixed(2)}%</div><div className="flex-1 text-center font-mono font-bold text-indigo-500">{metrics.newRatio.toFixed(2)}%</div></div>
-                   
                    <div className="flex items-center"><div className="flex-1 text-center text-slate-400">{t.estLiqPrice}</div><div className="flex-1 text-center font-mono text-orange-500">{metrics.currentLiq.toFixed(2)}</div><div className="flex-1 text-center font-mono font-bold text-orange-500">{metrics.newLiq.toFixed(2)}</div></div>
                 </div>
-                <div className="grid grid-cols-2 gap-3"><button onClick={() => setEditingPosId(null)} className="py-3 rounded-xl border border-slate-200 dark:border-slate-700 font-bold text-slate-500">{t.cancel}</button><button onClick={handleConfirmMargin} disabled={!isMarginInputValid()} className={`py-3 rounded-xl font-bold shadow-lg transition-all ${isMarginInputValid() ? 'bg-indigo-600 text-white shadow-indigo-500/20' : 'bg-slate-300 text-slate-500 cursor-not-allowed'}`}>{t.confirmAction}</button></div>
+                <div className="grid grid-cols-2 gap-3">
+                  <button onClick={() => setEditingPosId(null)} className="py-3 rounded-xl border border-slate-200 dark:border-slate-700 font-bold text-slate-500">{t.cancel}</button>
+                  <button onClick={handleConfirmMargin} disabled={!isMarginInputValid()} className={`py-3 rounded-xl font-bold shadow-lg transition-all ${isMarginInputValid() ? 'bg-indigo-600 text-white shadow-indigo-500/20' : 'bg-slate-300 text-slate-500 cursor-not-allowed'}`}>{t.confirmAction}</button>
+                </div>
              </div>
           </div>
       )}
       
-      {/* Redesigned Market Close All Confirmation Modal to match screenshot */}
       {showCloseAllConfirm && (
           <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in zoom-in-95 duration-200">
              <div className="bg-[#1b2331] w-full max-w-[320px] rounded-[24px] p-8 shadow-2xl border border-slate-700/50 text-center">
